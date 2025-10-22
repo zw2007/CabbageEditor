@@ -6,8 +6,9 @@ import traceback
 from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, QObject
 from PyQt6.QtWidgets import QApplication
 from mcp_client import qa_one_sync
-from utils.file_handle import FileHandler
-from utils.static_components import root_dir, scene_dict
+from .file_handle import FileHandler
+from .static_components import root_dir
+from .scene_manager import SceneManager
 
 try:
     import CoronaEngine
@@ -69,6 +70,7 @@ class Bridge(QObject):
         self.camera_position = [0.0, 5.0, 10.0]
         self.camera_forward = [0.0, 1.5, 0.0]
         self.central_manager = central_manager
+        self.scene_manager = SceneManager()
         self._workers: set[WorkerThread] = set()
 
     @pyqtSlot(str, str, str, str, str)
@@ -86,31 +88,21 @@ class Bridge(QObject):
 
     @pyqtSlot(str, str)
     def create_actor(self, scene_name, obj_path):
-        name = os.path.basename(obj_path)
-        object = CoronaEngine.Actor(obj_path)
-        scene_dict[scene_name]["actor_dict"][name] = {
-            "actor": object,
-            "path": obj_path
-        }
-
-    @pyqtSlot()
-    def remove_actor(self):
-        scene_dict["mainscene"] = {
-            "scene": None,
-            "actor_dict": {}
-        }
+        scene = self.scene_manager.get_scene(scene_name)
+        if not scene:
+            print(f"场景 '{scene_name}' 不存在，无法创建角色")
+            return
+        actor_data = scene.add_actor(obj_path)
+        print("角色创建成功:", actor_data["name"])
 
     @pyqtSlot(str)
     def create_scene(self, data):
         scene_name = json.loads(data).get("sceneName")
-        if scene_name not in scene_dict:
-            scene_dict[scene_name] = {
-                "scene": CoronaEngine.Scene(),
-                "actor_dict": {}
-            }
-        else:
-            print(f"场景已存在: {scene_name}")
-
+        if not scene_name:
+            print("场景名为空")
+            return
+        self.scene_manager.create_scene(scene_name)
+        print("场景创建成功:", scene_name)
 
     @pyqtSlot(str, str)
     def send_message_to_dock(self, routename, json_data):
@@ -154,45 +146,37 @@ class Bridge(QObject):
     @pyqtSlot(str, str)
     def open_file_dialog(self, sceneName, file_type="model"):
         file_handler = FileHandler()
+        scene = self.scene_manager.get_scene(sceneName)
+        if not scene:
+            print(f"场景 {sceneName} 不存在，无法加载资源")
+            return
+
         if file_type == "model":
             _, file_path = file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
             if file_path:
                 try:
-                    print(f"选择的模型文件路径: {file_path}")
-                    name = os.path.basename(file_path)
-                    object = CoronaEngine.Actor(file_path)
-                    scene_dict[sceneName]["actor_dict"][name] = {
-                        "actor": object,
-                        "path": file_path
-                    }
-                    response = {
-                        "name": name,
-                        "path": file_path,
-                    }
+                    # 通过场景添加角色
+                    actor_data = scene.add_actor(file_path)
+                    response = {"name": actor_data["name"], "path": file_path}
                     self.dock_event.emit("actorCreated", json.dumps(response))
                 except Exception as e:
                     print(f"创建角色失败: {str(e)}")
+
         elif file_type == "scene":
             content, file_path = file_handler.open_file("选择场景文件", "场景文件 (*.json)")
-            if file_path:
+            if file_path and content:
                 try:
-                    scene_dict[sceneName]["actor_dict"] = {}
                     scene_data = json.loads(content)
                     actors = []
+                    # 清空现有角色
+                    for actor_name in list(scene.actors.keys()):
+                        scene.remove_actor(actor_name)
+                    # 加载新角色
                     for actor in scene_data.get("actors", []):
                         path = actor.get("path")
                         if path:
-                            actor_obj = CoronaEngine.Actor(path)
-                            name = os.path.basename(path)
-                            scene_dict[sceneName]["actor_dict"][name] = {
-                                "name": name,
-                                "actor": actor_obj,
-                                "path": path
-                            }
-                            actors.append({
-                                "name": name,
-                                "path": path
-                            })
+                            actor_data = scene.add_actor(path)
+                            actors.append({"name": actor_data["name"], "path": path})
                     self.dock_event.emit("sceneLoaded", json.dumps({"actors": actors}))
                 except Exception as e:
                     print(f"加载场景失败: {str(e)}")
@@ -269,16 +253,17 @@ class Bridge(QObject):
         return None
 
     @pyqtSlot(str, str)
-    def actor_delete(self, sceneName, actorName):
-        try:
-            if actorName not in scene_dict[sceneName]["actor_dict"]:
-                print(f"当前场景中的角色列表: {list(scene_dict[sceneName]['actor_dict'].keys())}")
-                raise ValueError(f"角色 '{actorName}' 不在场景 '{sceneName}' 中")
-            del scene_dict[sceneName]["actor_dict"][actorName]
-            print(f"成功移除角色: {actorName}")
-        except Exception as e:
-            print(f"Actor delete failed: {str(e)}")
-            return str(e)
+    def remove_actor(self, sceneName, actorName):
+        scene = self.scene_manager.get_scene(sceneName)
+        if not scene:
+            print(f"场景 '{sceneName}' 不存在，无法删除角色")
+            return
+        actor = scene.get_actor(actorName)
+        if not actor:
+            print(f"角色 '{actorName}' 不存在，无法删除")
+            return
+        scene.remove_actor(actorName)
+        print(f"角色 '{actorName}' 已从场景 '{sceneName}' 中删除")
 
     @pyqtSlot(str)
     def actor_operation(self, data):
@@ -287,12 +272,21 @@ class Bridge(QObject):
             sceneName = Actor_data.get("sceneName")
             actorName = Actor_data.get("actorName")
             Operation = Actor_data.get("Operation")
-            x = float(Actor_data.get("x", 0.0))
-            y = float(Actor_data.get("y", 0.0))
-            z = float(Actor_data.get("z", 0.0))
+            x, y, z = map(float, [Actor_data.get("x", 0.0), Actor_data.get("y", 0.0), Actor_data.get("z", 0.0)])
+
+            scene = self.scene_manager.get_scene(sceneName)
+            if not scene:
+                print(f"场景 '{sceneName}' 不存在，无法操作角色")
+                return
+
+            actor = scene.get_actor(actorName)
+            if not actor:
+                print(f"角色 '{actorName}' 不存在，无法操作")
+                return
+
             match Operation:
                 case "Scale":
-                    CoronaEngine.Actor.scale(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
+                    actor.
                 case "Move":
                     CoronaEngine.Actor.move(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
                 case "Rotate":
