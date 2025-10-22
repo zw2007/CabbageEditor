@@ -286,7 +286,7 @@ class Bridge(QObject):
 
             match Operation:
                 case "Scale":
-                    actor.
+                    CoronaEngine.Actor.scale(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
                 case "Move":
                     CoronaEngine.Actor.move(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
                 case "Rotate":
