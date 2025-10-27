@@ -97,7 +97,7 @@ pythonGenerator.workspaceToCode = function customWorkspaceToCode(workspace) {
   // 如果有 handler 代码，则输出 def handle
   if (handlerCode.trim()) {
     parts.push('') // 空行分隔
-    parts.push('@pyqtSlot(str)\n' +
+    parts.push('@Slot(str)\n' +
         'def handle(key):' +
               '\n    print("key:", key)')
     const indentedHandlers = indentBlock(handlerCode)
