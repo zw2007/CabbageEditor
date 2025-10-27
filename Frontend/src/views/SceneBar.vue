@@ -158,27 +158,27 @@ const SaveScene = () => {
 };
 
 // 下拉菜单
-const showModelDropdown = ref(false);
+const ShowModelDropdown = ref(false);
 const ToggleModelDropdown = () => {
-  showModelDropdown.value = !showModelDropdown.value;
+  ShowModelDropdown.value = !ShowModelDropdown.value;
 }
 // 导入光源
 const ImportLightSource = () => {
-  showModelDropdown.value = false;
+  ShowModelDropdown.value = false;
   if (window.pyBridge && window.pyBridge.createLight) {
-    window.pyBridge.createLight(currentSceneName.value);
+    window.pyBridge.CreateLight(currentSceneName.value);
   }
 };
 // 导入摄像头
 const ImportCamera = () => {
-  showModelDropdown.value = false;
+  ShowModelDropdown.value = false;
   if (window.pyBridge && window.pyBridge.createCamera) {
-    window.pyBridge.createCamera(currentSceneName.value);
+    window.pyBridge.CreateCamera(currentSceneName.value);
   }
 };
 
 const HandleFileImport = () => { 
-  showModelDropdown.value = false;
+  ShowModelDropdown.value = false;
   if (window.pyBridge && window.pyBridge.open_file_dialog) {
     window.pyBridge.open_file_dialog(currentSceneName.value, 'model');
   }

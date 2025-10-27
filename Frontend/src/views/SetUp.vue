@@ -4,7 +4,7 @@
     <div class="titlebar flex items-center w-full cursor-move select-none justify-between rounded-t-md bg-black p-2">
       <div class="w-auto whitespace-nowrap font-medium text-white">设置</div>
       <!-- 关闭按钮 -->
-      <button @click.stop="closeDock"
+      <button @click.stop="CloseDock"
         class="rounded px-2 py-1 text-sm text-white transition-colors duration-200 hover:bg-gray-600 bg-gray-700">
         ×
       </button>
@@ -18,7 +18,7 @@
         <p class="text-center text-sm sm:text-base md:text-lg">存档</p>
       </button>
       <button
-        @click="goWelcome"
+        @click="GoWelcome"
         class="w-full max-w-xs rounded-md bg-[#5f9dc6]/50 px-6 py-3 font-bold text-black/80 hover:bg-[#5f9dc6]/70">
         <p class="text-center text-sm sm:text-base md:text-lg">返回初始页面</p>
       </button>
@@ -43,14 +43,14 @@
     const showArchiveDialog = ref(false);
     const archiveName = ref('');
 
-    const closeDock = () => {
+    const CloseDock = () => {
     if (window.pyBridge) {
         window.pyBridge.remove_dock_widget("SetUp");
     }
     };
 
     // 避免连接/断开 dock_event 时引用未定义
-    const handleDockEvent = (event_type, event_data) => {
+    const HandleDockEvent = (event_type, event_data) => {
       try {
         // 可按需处理 SetUp 的 dock 事件，这里默认忽略
         return;
@@ -59,17 +59,18 @@
 
     const Archive = () => {
     if (window.pyBridge && window.pyBridge.scene_save) {
-      const sceneData = {
+      const SceneData = {
         actors: sceneImages.value.map(scene => ({
           name: scene.name,
           path: scene.path,
+          type: scene.type
         }))
       };
-      window.pyBridge.scene_save(JSON.stringify(sceneData));
+      window.pyBridge.scene_save(JSON.stringify(SceneData));
     };
 
     try {
-    const newArchive = {
+    const NewArchive = {
       id: Date.now(),
       name: '未命名存档',
       time: new Date().toLocaleDateString('zh-CN', { 
@@ -85,7 +86,7 @@
     };
     // 存储到 localStorage
     const existingSaves = JSON.parse(localStorage.getItem('archives') || '[]');
-    existingSaves.unshift(newArchive);
+    existingSaves.unshift(NewArchive);
     localStorage.setItem('archives', JSON.stringify(existingSaves));
     
         window.pyBridge.send_message_to_main("go_home", "");
@@ -99,40 +100,36 @@
   }
 }
 
-/*
-  const handleDockEvent = (event_type, event_data) => {
-  if (event_type === 'actorCreated') {
-    try {
-      const data = JSON.parse(event_data);
-      // 使用后端返回的数据创建场景项
-      sceneImages.value.push({
-        name: data.name,         // 使用返回的名称
-        path: data.path,         // 使用返回的完整路径
-        type: 'obj'
-      });
-    } catch (error) {
-      console.error('处理Actor创建响应失败:', error);
-    }
-  } else if (event_type === 'sceneLoaded') {
-    try {
-      const data = JSON.parse(event_data);
-      if (data.actors && Array.isArray(data.actors)) {
-        sceneImages.value = data.actors.map(actor => ({
-          name: actor.path.split('/').pop().split('.')[0], 
-          path: actor.path,
-          type: 'obj'
-        }));
-      }
-    } catch (error) {
-      console.error('处理场景加载响应失败:', error);
-    }
-  } else if (event_type === 'message'){
-    print(event_data)
-  }
-};
-*/
+//   const HandleEvent = (event_type, event_data) => {
+//   if (event_type === 'actorCreated') {
+//     try {
+//       const data = JSON.parse(event_data);
+//       // 使用后端返回的数据创建场景项
+//       sceneImages.value.push({
+//         name: data.name,         // 使用返回的名称
+//         path: data.path,         // 使用返回的完整路径
+//         type: 'obj'
+//       });
+//     } catch (error) {
+//       console.error('处理Actor创建响应失败:', error);
+//     }
+//   } else if (event_type === 'sceneLoaded') {
+//     try {
+//       const data = JSON.parse(event_data);
+//       if (data.actors && Array.isArray(data.actors)) {
+//         sceneImages.value = data.actors.map(actor => ({
+//           name: actor.path.split('/').pop().split('.')[0], 
+//           path: actor.path,
+//           type: 'obj'
+//         }));
+//       }
+//     } catch (error) {
+//       console.error('处理场景加载响应失败:', error);
+//     }
+//   }
+// };
 
-    const goWelcome = () => {
+    const GoWelcome = () => {
       window.pyBridge.send_message_to_main("go_home", "");
       window.pyBridge.remove_dock_widget("Pet");
       window.pyBridge.remove_dock_widget("AITalkBar");
@@ -153,13 +150,13 @@
       document.addEventListener('mousemove', onDrag);
       document.addEventListener('mouseup', stopDrag);
       if (window.pyBridge) {
-      window.pyBridge.dock_event.connect(handleDockEvent);
+      window.pyBridge.dock_event.connect(HandleDockEvent);
       };
     });
 
     onUnmounted(() => {
     if (window.pyBridge) {
-      window.pyBridge.dock_event.disconnect(handleDockEvent);
+      window.pyBridge.dock_event.disconnect(HandleDockEvent);
     };
   });
 </script>
