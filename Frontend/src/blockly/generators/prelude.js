@@ -16,7 +16,7 @@ const PRELUDE_SNIPPETS = {
     global: [
       '# 键盘/事件桥接初始化',
       'from PySide6.QtCore import Slot',
-      'from utils.bridge import get_bridge',
+      'from Backend.utils.bridge import get_bridge',
     ].join('\n'),
     runPrologue: [
       '# 连接前端事件到后端处理函数',

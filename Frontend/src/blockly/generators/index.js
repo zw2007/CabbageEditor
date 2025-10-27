@@ -78,10 +78,8 @@ pythonGenerator.workspaceToCode = function customWorkspaceToCode(workspace) {
   const header = [
     '# -*- coding: utf-8 -*-',
     `# Generated from Blockly by CabbageEditor @ ${timestamp}`,
-    'try:',
-    '    import CoronaEngine',
-    'except ImportError:',
-    '    from corona_engine_fallback import CoronaEngine',
+    'from Backend.utils.engine_import import load_corona_engine',
+    'CoronaEngine = load_corona_engine()'
   ].join('\n')
 
   // 各位置前置片段（已去除尾部多余换行；此处不再额外添加空行）

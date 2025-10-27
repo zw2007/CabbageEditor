@@ -2,13 +2,9 @@
 from typing import Dict, List, Any, Optional
 from .engine_object_factory import EngineObjectFactory
 from .actor import Actor
-
+import os
 
 class Scene:
-    """场景封装类，优先直接使用 C++ 引擎层的数据（ECS）作为单一数据源；
-    仅在引擎不支持查询时保留一个最小的 Python 侧 registry（只保存 Actor wrapper 引用）
-    """
-
     def __init__(self, name: str, engine_scene: Any = None):
         self.name = name
         # allow injection of an existing engine scene (RenderWidget needs this)
@@ -16,8 +12,11 @@ class Scene:
             self.engine_scene = engine_scene
         else:
             self.engine_scene = EngineObjectFactory.create_scene()  # 引擎场景实例
-        # lightweight registry used only if engine doesn't provide listing APIs
         self._actor_registry: Dict[str, Actor] = {}
+        # camera / light wrappers (created lazily via factory)
+        self._camera: Optional[Any] = None
+        self._light: Optional[Any] = None
+
         self.camera_position: List[float] = [0.0, 5.0, 10.0]
         self.camera_forward: List[float] = [0.0, 1.5, 0.0]
         self.camera_up: List[float] = [0.0, -1.0, 0.0]
@@ -27,18 +26,14 @@ class Scene:
     # --- Actor management (prefer engine-side operations) ---
     def add_actor(self, obj_path: str) -> Dict[str, Any]:
         """在引擎 scene 中创建 actor，并返回兼容的 dict（name/path/engine_obj）。
-        不在 Python 再做完整数据复制；若引擎无法列举 actor，我们会把 wrapper 保存在最小 registry 以便后续引用。
+        EngineObjectFactory.create_actor 已经实现了尝试复用已存在 engine actor 的逻辑。
         """
         actor = EngineObjectFactory.create_actor(self.engine_scene, obj_path)
+        # prefer wrapper name if present
+        name = getattr(actor, 'name', None) or getattr(actor.engine_obj, 'name', None) or os.path.basename(obj_path)
 
-        # try to determine name from wrapper
-        name = getattr(actor, 'name', None) or getattr(actor.engine_obj, 'name', None) or obj_path.split(os.sep)[-1]
-
-        # if engine does not provide listing, keep minimal registry for lookup
         if not self._engine_supports_listing():
             self._actor_registry[name] = actor
-
-        # update compatibility scene_dict entry if present
         try:
             from .static_components import scene_dict
 
@@ -47,7 +42,6 @@ class Scene:
             scene_dict[self.name]["actor_dict"][name] = actor.to_dict()
         except Exception:
             pass
-
         return actor.to_dict()
 
     def _engine_supports_listing(self) -> bool:
@@ -96,23 +90,29 @@ class Scene:
 
     def get_actor(self, actor_name: str) -> Optional[Actor]:
         """Try to obtain an Actor wrapper for an existing actor in the engine.
-        Prefer to wrap engine-provided actor objects; fallback to registry.
+        Prefer to return a cached wrapper from EngineObjectFactory when possible.
         """
         eng = self.engine_scene
         try:
-            # Try engine-provided finders
-            if hasattr(eng, 'getActor'):
-                obj = eng.getActor(actor_name)
-                if obj is not None:
-                    return Actor(obj, getattr(obj, 'path', actor_name))
-            if hasattr(eng, 'get_actor'):
-                obj = eng.get_actor(actor_name)
-                if obj is not None:
-                    return Actor(obj, getattr(obj, 'path', actor_name))
-            if hasattr(eng, 'findActor'):
-                obj = eng.findActor(actor_name)
-                if obj is not None:
-                    return Actor(obj, getattr(obj, 'path', actor_name))
+            # Try engine-provided finders to obtain the raw engine object
+            obj = None
+            try:
+                if hasattr(eng, 'getActor'):
+                    obj = eng.getActor(actor_name)
+                elif hasattr(eng, 'get_actor'):
+                    obj = eng.get_actor(actor_name)
+                elif hasattr(eng, 'findActor'):
+                    obj = eng.findActor(actor_name)
+            except Exception:
+                obj = None
+
+            if obj is not None:
+                # check factory cache to reuse wrapper
+                cache = getattr(EngineObjectFactory, '_actor_cache', None)
+                if cache is not None and actor_name in cache:
+                    return cache[actor_name]
+                # otherwise create a transient wrapper (don't duplicate registry)
+                return Actor(obj, getattr(obj, 'path', actor_name))
         except Exception:
             pass
 
@@ -120,32 +120,47 @@ class Scene:
         return self._actor_registry.get(actor_name)
 
     def remove_actor(self, actor_name: str) -> bool:
-        """Remove actor by name: if engine supports deletion, call it; otherwise remove from registry.
-        Also update compatibility scene_dict.
+        """Remove actor by name: try engine APIs first; if we have a wrapper, call its delete() to avoid
+        duplicated deletion logic. Returns True if actor was removed.
         """
         eng = self.engine_scene
         removed = False
-        try:
-            # try engine-level removal APIs
-            if hasattr(eng, 'removeActor'):
-                removed = bool(eng.removeActor(actor_name))
-            elif hasattr(eng, 'remove_actor'):
-                removed = bool(eng.remove_actor(actor_name))
-            else:
-                # try to get actor object and call delete on it
-                actor_obj = None
-                if hasattr(eng, 'getActor'):
-                    actor_obj = eng.getActor(actor_name)
-                elif hasattr(eng, 'get_actor'):
-                    actor_obj = eng.get_actor(actor_name)
-                if actor_obj is not None and hasattr(actor_obj, 'delete'):
-                    try:
-                        actor_obj.delete()
-                        removed = True
-                    except Exception:
-                        removed = False
-        except Exception:
-            removed = False
+
+        # Prefer wrapper-based deletion if we have a wrapper in our registry or factory cache
+        wrapper = self._actor_registry.get(actor_name)
+        if wrapper is None:
+            cache = getattr(EngineObjectFactory, '_actor_cache', None)
+            if cache is not None and actor_name in cache:
+                wrapper = cache[actor_name]
+
+        if wrapper is not None:
+            try:
+                removed = wrapper.delete()
+            except Exception:
+                removed = False
+
+        if not removed:
+            try:
+                # try engine-level removal APIs
+                if hasattr(eng, 'removeActor'):
+                    removed = bool(eng.removeActor(actor_name))
+                elif hasattr(eng, 'remove_actor'):
+                    removed = bool(eng.remove_actor(actor_name))
+                else:
+                    # try to get actor object and call delete on it
+                    actor_obj = None
+                    if hasattr(eng, 'getActor'):
+                        actor_obj = eng.getActor(actor_name)
+                    elif hasattr(eng, 'get_actor'):
+                        actor_obj = eng.get_actor(actor_name)
+                    if actor_obj is not None and hasattr(actor_obj, 'delete'):
+                        try:
+                            actor_obj.delete()
+                            removed = True
+                        except Exception:
+                            removed = False
+            except Exception:
+                removed = False
 
         # Fallback: remove from Python registry
         if not removed and actor_name in self._actor_registry:
@@ -163,30 +178,61 @@ class Scene:
 
         return removed
 
-    # camera & sun remain same
+    # camera & sun remain same but backed by factory
+    def ensure_camera(self):
+        if self._camera is None:
+            try:
+                self._camera = EngineObjectFactory.create_camera(self.engine_scene)
+            except Exception:
+                self._camera = None
+        return self._camera
+
+    def ensure_light(self):
+        if self._light is None:
+            try:
+                self._light = EngineObjectFactory.create_light(self.engine_scene)
+            except Exception:
+                self._light = None
+        return self._light
+
     def set_camera(self, position: List[float], forward: List[float],
                    up: List[float], fov: float) -> None:
         self.camera_position = position
         self.camera_forward = forward
         self.camera_up = up
         self.camera_fov = fov
+        cam = self.ensure_camera()
         try:
-            if hasattr(self.engine_scene, 'setCamera'):
+            if cam and hasattr(cam.engine_obj, 'setTransform'):
+                cam.engine_obj.setTransform(position, forward, up, fov)
+            elif self.engine_scene is not None and hasattr(self.engine_scene, 'setCamera'):
                 self.engine_scene.setCamera(position, forward, up, fov)
         except Exception:
             pass
 
     def set_sun_direction(self, direction: List[float]) -> None:
         self.sun_direction = direction
+        light = self.ensure_light()
         try:
-            if hasattr(self.engine_scene, 'setSunDirection'):
+            if light and hasattr(light.engine_obj, 'setDirection'):
+                light.engine_obj.setDirection(direction)
+            elif hasattr(self.engine_scene, 'setSunDirection'):
                 self.engine_scene.setSunDirection(direction)
         except Exception:
             pass
 
     def to_dict(self) -> Dict[str, Any]:
-        """Compatibility view of the scene similar to previous scene_dict entries."""
+        """Compatibility view of the scene similar to previous scene_dict entries.
+        Include camera/light wrappers when available.
+        """
+        actor_dict = {name: actor.to_dict() for name, actor in self._actor_registry.items()}
+        cam = self._camera
+        light = self._light
+        cam_dict = cam.to_dict() if cam is not None else None
+        light_dict = light.to_dict() if light is not None else None
         return {
             "scene": self.engine_scene,
-            "actor_dict": {name: actor.to_dict() for name, actor in self._actor_registry.items()},
+            "actor_dict": actor_dict,
+            "camera": cam_dict,
+            "light": light_dict,
         }

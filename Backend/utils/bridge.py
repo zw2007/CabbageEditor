@@ -5,17 +5,14 @@ import traceback
 
 from PySide6.QtCore import QThread, Signal, Slot, QObject
 from PySide6.QtWidgets import QApplication
-from mcp_client import qa_one_sync
+from ..mcp_client import qa_one_sync
 from .file_handle import FileHandler
 from .static_components import root_dir
 from .scene_manager import SceneManager
+from .engine_import import load_corona_engine
 
-try:
-    import CoronaEngine
+CoronaEngine = load_corona_engine()
 
-    print("import CoronaEngine")
-except ImportError:
-    from corona_engine_fallback import CoronaEngine
 
 _bridge_singleton = None
 
@@ -155,7 +152,7 @@ class Bridge(QObject):
             _, file_path = file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
             if file_path:
                 try:
-                    # 通过场景添加角色
+                              
                     actor_data = scene.add_actor(file_path)
                     response = {"name": actor_data["name"], "path": file_path}
                     self.dock_event.emit("actorCreated", json.dumps(response))
@@ -168,10 +165,10 @@ class Bridge(QObject):
                 try:
                     scene_data = json.loads(content)
                     actors = []
-                    # 清空现有角色
+                            
                     for actor_name in list(scene.actors.keys()):
                         scene.remove_actor(actor_name)
-                    # 加载新角色
+                           
                     for actor in scene_data.get("actors", []):
                         path = actor.get("path")
                         if path:
@@ -286,7 +283,7 @@ class Bridge(QObject):
 
             match Operation:
                 case "Scale":
-                    # use Actor wrapper
+
                     try:
                         actor.scale([x, y, z])
                     except Exception as e:
@@ -357,16 +354,31 @@ class Bridge(QObject):
                     script_files.append(f.replace(".py", ""))
             run_script_content = ""
             for script in script_files:
-                run_script_content += f"import script.{script}\n"
+                # import via package path so modules load as Backend.script.* when runScript is executed
+                run_script_content += f"from Backend.script import {script}\n"
 
             run_script_content += "\ndef run():\n"
             for script in script_files:
-                run_script_content += f"    script.{script}.run()\n"
+                run_script_content += f"    {script}.run()\n"
 
             with open(run_script_path, "w", encoding="utf-8") as f:
                 f.write(run_script_content)
             print(f"[DEBUG] 脚本文件创建成功: {filepath}")
             print(f"[DEBUG] runScript.py创建/覆盖成功: {run_script_path}")
+            # Patch generated script files to use package-relative imports (fix 'attempted relative import beyond top-level')
+            try:
+                for sf in script_files:
+                    sf_path = os.path.join(self.script_dir, f"{sf}.py")
+                    if os.path.exists(sf_path):
+                        with open(sf_path, 'r', encoding='utf-8') as sf_f:
+                            content = sf_f.read()
+                        new_content = content.replace('from utils.', 'from Backend.utils.').replace(
+                            'from corona_engine_fallback import', 'from Backend.corona_engine_fallback import')
+                        if new_content != content:
+                            with open(sf_path, 'w', encoding='utf-8') as sf_f:
+                                sf_f.write(new_content)
+            except Exception:
+                pass
         except Exception as e:
             print(f"[ERROR] 执行Python代码时出错: {str(e)}")
             error_response = {
@@ -396,17 +408,3 @@ class Bridge(QObject):
                 )
         except Exception as e:
             print(f"[ERROR] 保存场景失败: {str(e)}")
-            error_response = {
-                "status": "error",
-                "message": str(e)
-            }
-            self.dock_event.emit("sceneError", json.dumps(error_response))
-
-    @Slot()
-    def close_process(self):
-        QApplication.quit()
-        os._exit(0)
-
-    @Slot(str, str)
-    def forward_dock_event(self, event_type, event_data):
-        self.dock_event.emit(event_type, event_data)

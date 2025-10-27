@@ -1,4 +1,4 @@
-# scene_manager.py
+                  
 from typing import Dict, Optional, Any
 from .scene import Scene
 
@@ -10,7 +10,7 @@ class SceneManager:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # initialize scenes mapping on the singleton instance
+                                                                 
             cls._instance.scenes = {}
         return cls._instance
 
@@ -19,7 +19,7 @@ class SceneManager:
         if scene_name not in self.scenes:
             scene = Scene(scene_name, engine_scene=engine_scene)
             self.scenes[scene_name] = scene
-            # populate compatibility scene_dict if available
+                                                            
             try:
                 from .static_components import scene_dict
 

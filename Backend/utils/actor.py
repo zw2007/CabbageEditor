@@ -1,17 +1,13 @@
 from typing import Any, Dict
 import os
+import weakref
 
-try:
-    import CoronaEngine
-except Exception:
-    from corona_engine_fallback import CoronaEngine
+from .engine_import import load_corona_engine
+
+CoronaEngine = load_corona_engine()
 
 
 class Actor:
-    """Wrapper around an engine actor object.
-    Exposes .engine_obj, .path, .name and convenience methods that delegate to CoronaEngine when available.
-    """
-
     def __init__(self, engine_obj: Any, path: str):
         self.engine_obj = engine_obj
         self.path = path
@@ -24,7 +20,6 @@ class Actor:
             elif hasattr(self.engine_obj, 'scale'):
                 self.engine_obj.scale(v)
         except Exception:
-            # swallow; caller may log
             raise
 
     def move(self, v):
@@ -45,6 +40,23 @@ class Actor:
         except Exception:
             raise
 
+    def delete(self) -> bool:
+        """Try to delete this actor from the engine. Return True on success.
+        This allows both `actor.delete()` and Scene.remove_actor to work without conflict.
+        """
+        try:
+            # Engine-level free/delete via class helper
+            if CoronaEngine and hasattr(CoronaEngine, 'Actor') and hasattr(CoronaEngine.Actor, 'delete'):
+                CoronaEngine.Actor.delete(self.engine_obj)
+                return True
+            # instance-level delete
+            if hasattr(self.engine_obj, 'delete'):
+                self.engine_obj.delete()
+                return True
+        except Exception:
+            return False
+        return False
+
     def to_dict(self) -> Dict[str, Any]:
         """Compatibility helper that returns a dict similar to the old structure.
         Keys: name, path, engine_obj (or 'actor' in some callers).
@@ -56,3 +68,5 @@ class Actor:
             'actor': self.engine_obj,
         }
 
+    def __repr__(self) -> str:
+        return f"<Actor name={self.name} path={self.path} engine_obj={repr(self.engine_obj)}>"

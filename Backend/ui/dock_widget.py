@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWidgets import QDockWidget, QWidget
-from utils.bridge import get_bridge
+from ..utils.bridge import get_bridge
 from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngineSettings
 
 
@@ -21,7 +21,7 @@ class RouteDockWidget(QDockWidget):
         self.worker_threads = []
 
         from PySide6.QtCore import QUrl
-        from utils.static_components import url as base_url
+        from ..utils.static_components import url as base_url
         self.url = QUrl(base_url.toString())
         self.url.setFragment(path)
 
