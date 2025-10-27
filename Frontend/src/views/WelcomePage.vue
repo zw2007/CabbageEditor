@@ -76,7 +76,7 @@
             <!--继续游戏-->
             <router-link to="/MainPage" class="w-full max-w-xs">
                 <button
-                    @click="removeActors" 
+                    @click="removeActors"
                     class="welcome-button">
                     <p class="button-text">继续创作<br />Continue creating</p>
                 </button>
@@ -304,11 +304,6 @@ const Out = () => {
 }
 
 const removeActors = () => {
-    if (window.pyBridge) {
-        window.pyBridge.remove_actor();
-    } else {
-        console.error("Python SendMessageToDock 未连接！");
-    }
 }
 
 // 存档相关逻辑
@@ -331,8 +326,6 @@ const loadSave = (save) => {
     const target = archives.find(a => a.id === save.id);
     
     if (target && window.pyBridge) {
-      // 清空场景
-      window.pyBridge.remove_actor();
       // 加载存档
       target.sceneData.forEach(actor => {
         window.pyBridge.create_actor(currentScene.value, actor.path);
@@ -348,7 +341,6 @@ const loadSave = (save) => {
 onMounted(() => {
   document.addEventListener('keydown', handleKeyDown);
   loadArchives();
-  eventBus.on('archives-updated', loadArchives);
 });
 
 onUnmounted(() => {

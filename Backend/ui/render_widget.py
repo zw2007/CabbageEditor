@@ -1,15 +1,17 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from PyQt6.QtCore import QRect, pyqtSignal
-from PyQt6.QtGui import QPainter, QPixmap
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import QRect, Signal
+from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtWidgets import QWidget
+
+from ..utils.scene_manager import SceneManager
 
 
 class RenderWidget(QWidget):
-    geometry_changed = pyqtSignal(QRect)
+    geometry_changed = Signal(QRect)
 
-    def __init__(self, Main_Window, scene_dict: Dict[str, Dict[str, Any]]):
+    def __init__(self, Main_Window):
         super(RenderWidget, self).__init__()
         self.Main_Window = Main_Window
 
@@ -20,19 +22,35 @@ class RenderWidget(QWidget):
             import CoronaEngine
             print("import CoronaEngine")
         except ImportError:
-            from corona_engine_fallback import CoronaEngine
+            from ..corona_engine_fallback import CoronaEngine
 
-        self.mainscene = CoronaEngine.Scene(
-            int(self.winId()),False
-        )
-        self.mainscene.setCamera(
-            [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
-        )
-        print(self.mainscene)
-        scene_dict["mainscene"]={
-            "scene":self.mainscene,
-            "actor_dict":{}
-        }
+        # Create an engine scene that is bound to this widget's native window handle
+        self.engine_scene = CoronaEngine.Scene(int(self.winId()), False)
+
+        # Register a Scene wrapper with SceneManager so other code can access it and
+        # so higher-level operations go through our Scene API (camera/light, actor ops, etc.).
+        try:
+            self.scene_wrapper = SceneManager().create_scene("mainscene", engine_scene=self.engine_scene)
+        except Exception as e:
+            print(f"Failed to register mainscene with SceneManager: {e}")
+            self.scene_wrapper = None
+
+        # Use the high-level Scene API to set camera rather than calling engine methods directly
+        if self.scene_wrapper is not None:
+            try:
+                self.scene_wrapper.set_camera(
+                    [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
+                )
+            except Exception as e:
+                print(f"Failed to set camera on scene_wrapper: {e}")
+        else:
+            # fall back to engine call if wrapper not available
+            try:
+                self.engine_scene.setCamera(
+                    [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
+                )
+            except Exception:
+                pass
 
         self.image_path = os.path.join(os.path.dirname(__file__), "background.png")
         self.pixmap: Optional[QPixmap] = None

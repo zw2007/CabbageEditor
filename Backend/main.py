@@ -4,6 +4,11 @@ import importlib.util
 import glob
 import queue
 
+# Ensure project root (parent of Backend/) is on sys.path so package imports like 'Backend.ui' work
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-software-rasterizer --enable-native-gpu-memory-buffers=false --disable-gpu-compositing --disable-gpu-rasterization --disable-oop-rasterization"
 os.environ["QT_QUICK_BACKEND"] = "software"
@@ -12,7 +17,10 @@ os.environ["QT_QPA_PLATFORM"] = "windows"
 
 _cleaned_up = False
 
-from ui import main_window
+from Backend.ui import main_window
+
+# Initialize the Qt app and main window once at import time so subsequent code can use `app`.
+app, window = main_window.init_app()
 
 msg_queue = queue.Queue()
 
@@ -63,7 +71,7 @@ def run(isReload):
     if not msg_queue.empty():
         print(msg_queue.get())
 
-    main_window.app.processEvents()
+    app.processEvents()
 
 
 def put_queue(msg):
@@ -78,4 +86,4 @@ if __name__ == '__main__':
             runScript = importlib.util.module_from_spec(runscript_spec)
             runscript_spec.loader.exec_module(runScript)
             runScript.run()
-        main_window.app.processEvents()
+        app.processEvents()

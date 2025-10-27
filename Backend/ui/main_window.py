@@ -1,14 +1,15 @@
 import os
 import sys
 
-from PyQt6.QtCore import Qt, QPoint, QEvent
-from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QMainWindow, QApplication, QDockWidget
-from ui.browser_widget import BrowserWidget
-from ui.custom_window import CustomWindow
-from ui.render_widget import RenderWidget
-from utils.static_components import scene_dict, url
+from PySide6.QtCore import Qt, QPoint, QEvent
+from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import QMainWindow, QApplication, QDockWidget
+from .browser_widget import BrowserWidget
+from .custom_window import CustomWindow
+from .render_widget import RenderWidget
+from ..utils.static_components import url
+from typing import Optional
 
 
 class MainWindow(QMainWindow):
@@ -20,7 +21,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CoronaEngine")
         self.configure_web_engine()
 
-        self.render_widget = RenderWidget(self, scene_dict)
+        self.render_widget = RenderWidget(self)
         self.setCentralWidget(self.render_widget)
 
         self.osd = CustomWindow(self)
@@ -53,7 +54,7 @@ class MainWindow(QMainWindow):
         super().moveEvent(event)
 
     def reloadWidget(self) -> None:
-                                                 
+
         for dock in self.findChildren(QDockWidget):
             dock.setParent(None)
 
@@ -89,6 +90,29 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
+
+# Remove module-level side-effects. Provide init function to create QApplication and window.
+app: Optional[QApplication] = None
+window: Optional[MainWindow] = None
+
+
+def init_app(argv=None):
+    """Create QApplication and MainWindow if not already created. Returns (app, window)."""
+    global app, window
+    if app is None:
+        app = QApplication(argv or sys.argv)
+    if window is None:
+        window = MainWindow()
+    try:
+        window.show()
+    except Exception:
+        pass
+    return app, window
+
+
+def get_app():
+    return app
+
+
+def get_window():
+    return window

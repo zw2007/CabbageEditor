@@ -5,7 +5,7 @@
 	- 实现基于积木可视化编程（类似 Scratch），积木运行时转为 Python
 - 后端/脚本层 Python：
 	- 基于 MCP 接入大模型
-	- 使用 PyQt6 的 QWebEngineView 及 QDockWidget 搭建前端界面布局
+	- 使用 PySide6 的 QWebEngineView 及 QDockWidget 搭建前端界面布局
 - 底层 C++：
 	- 支持 Python 层的热重载，保存文件自动更新 Python 代码逻辑
   

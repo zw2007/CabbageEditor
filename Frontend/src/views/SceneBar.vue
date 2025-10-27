@@ -223,8 +223,8 @@ const HandleDockEvent = (event_type, event_data) => {
 
 const DeleteActor = (scene) => {
   try {
-    if (window.pyBridge && window.pyBridge.actor_delete) {
-      window.pyBridge.actor_delete(currentSceneName.value,scene.name);
+    if (window.pyBridge && window.pyBridge.remove_actor) {
+      window.pyBridge.remove_actor(currentSceneName.value,scene.name);
       // 删除关联的Dock窗口
       const widgetName = `Object_${scene.name}`;
       window.pyBridge.remove_dock_widget(widgetName);
@@ -285,7 +285,6 @@ onMounted(() => {
   document.addEventListener('mouseup', HandleResizeUp);
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
-  window.pyBridge.send_message_to_dock("AITalkBar", JSON.stringify({"content": "Hello, World!"}));
   if (window.pyBridge) {
     window.pyBridge.dock_event.connect(HandleDockEvent);
   };

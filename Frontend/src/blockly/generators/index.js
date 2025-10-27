@@ -78,10 +78,8 @@ pythonGenerator.workspaceToCode = function customWorkspaceToCode(workspace) {
   const header = [
     '# -*- coding: utf-8 -*-',
     `# Generated from Blockly by CabbageEditor @ ${timestamp}`,
-    'try:',
-    '    import CoronaEngine',
-    'except ImportError:',
-    '    from corona_engine_fallback import CoronaEngine',
+    'from Backend.utils.engine_import import load_corona_engine',
+    'CoronaEngine = load_corona_engine()'
   ].join('\n')
 
   // 各位置前置片段（已去除尾部多余换行；此处不再额外添加空行）
@@ -97,7 +95,7 @@ pythonGenerator.workspaceToCode = function customWorkspaceToCode(workspace) {
   // 如果有 handler 代码，则输出 def handle
   if (handlerCode.trim()) {
     parts.push('') // 空行分隔
-    parts.push('@pyqtSlot(str)\n' +
+    parts.push('@Slot(str)\n' +
         'def handle(key):' +
               '\n    print("key:", key)')
     const indentedHandlers = indentBlock(handlerCode)

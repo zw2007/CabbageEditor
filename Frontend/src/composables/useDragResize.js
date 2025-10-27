@@ -25,7 +25,7 @@ export function useDragResize() {
     if (!isFloating.value && window.pyBridge) {
       isFloating.value = true;
       const routename = window.__dockRouteName;
-      window.pyBridge.forwardDockEvent('float', JSON.stringify({
+      window.pyBridge.forward_dock_event('float', JSON.stringify({
         isFloating: true,
         routename
       }));
@@ -48,7 +48,7 @@ export function useDragResize() {
 
     if (window.pyBridge) {
       const routename = window.__dockRouteName;
-      window.pyBridge.forwardDockEvent('drag', JSON.stringify({
+      window.pyBridge.forward_dock_event('drag', JSON.stringify({
         deltaX,
         deltaY,
         routename
@@ -68,7 +68,7 @@ const handleDoubleClick = () => {
   if (isFloating.value && window.pyBridge) {
     isFloating.value = false;
     const routename = window.__dockRouteName;
-    window.pyBridge.forwardDockEvent('float', JSON.stringify({
+    window.pyBridge.forward_dock_event('float', JSON.stringify({
       isFloating: false,
       routename
     }));
@@ -138,7 +138,7 @@ const handleDoubleClick = () => {
         height: newHeight,
         routename
       };
-      window.pyBridge.forwardDockEvent('resize', JSON.stringify(payload));
+      window.pyBridge.forward_dock_event('resize', JSON.stringify(payload));
     }
     event.preventDefault();
   };

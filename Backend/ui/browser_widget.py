@@ -1,12 +1,12 @@
 import json
 
-from PyQt6.QtCore import Qt, QPoint, QUrl
-from PyQt6.QtGui import QColor, QGuiApplication
-from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from ui.dock_widget import RouteDockWidget, DockCleanupWidget
-from utils.bridge import get_bridge
-from utils.central_manager import CentralManager
+from PySide6.QtCore import Qt, QPoint, QUrl
+from PySide6.QtGui import QColor, QGuiApplication
+from PySide6.QtWebChannel import QWebChannel
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from .dock_widget import RouteDockWidget, DockCleanupWidget
+from ..utils.bridge import get_bridge
+from ..utils.central_manager import CentralManager
 
 
 class BrowserWidget(QWebEngineView):
@@ -14,7 +14,7 @@ class BrowserWidget(QWebEngineView):
         super(BrowserWidget, self).__init__(Main_Window)
         self.Main_Window = Main_Window
         self.central_manager = CentralManager()
-                           
+
         self.url = QUrl(url) if isinstance(url, str) else url
 
         self.setMinimumSize(1, 1)
@@ -117,7 +117,7 @@ class BrowserWidget(QWebEngineView):
 
     def closeEvent(self, event):
         try:
-                                                                                                                  
+
             try:
                 self.bridge.create_route.disconnect(self.AddDockWidget)
             except Exception:
@@ -130,7 +130,7 @@ class BrowserWidget(QWebEngineView):
                 self.bridge.command_to_main.disconnect(self.handle_command_to_main)
             except Exception:
                 pass
-                                                     
+
             try:
                 if hasattr(self, "channel") and self.channel:
                     self.channel.deregisterObject(self.bridge)
@@ -141,7 +141,7 @@ class BrowserWidget(QWebEngineView):
                     self.page().setWebChannel(None)
             except Exception:
                 pass
-                                                    
+
             if hasattr(self, "channel") and self.channel:
                 self.channel.deleteLater()
         finally:
