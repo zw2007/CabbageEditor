@@ -408,3 +408,12 @@ class Bridge(QObject):
                 )
         except Exception as e:
             print(f"[ERROR] 保存场景失败: {str(e)}")
+
+    @Slot()
+    def close_process(self):
+        QApplication.quit()
+        os._exit(0)
+
+    @Slot(str, str)
+    def forward_dock_event(self, event_type, event_data):
+        self.dock_event.emit(event_type, event_data)
