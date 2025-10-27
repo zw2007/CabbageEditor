@@ -69,7 +69,6 @@ import { ref, inject, onMounted, onUnmounted } from 'vue';
 import { useDragResize } from '@/composables/useDragResize';
 
 const { dragState,startDrag,startResize,stopDrag,onDrag,stopResize,onResize, handleDoubleClick } = useDragResize();
-const eventBus = inject('eventBus');
 
 const messages = ref([
   { sender: "AI", text: "你好！我是 AI。" },

@@ -1,13 +1,13 @@
 import os
 from typing import Any, Dict, Optional
 
-from PyQt6.QtCore import QRect, pyqtSignal
-from PyQt6.QtGui import QPainter, QPixmap
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import QRect, Signal
+from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtWidgets import QWidget
 
 
 class RenderWidget(QWidget):
-    geometry_changed = pyqtSignal(QRect)
+    geometry_changed = Signal(QRect)
 
     def __init__(self, Main_Window, scene_dict: Dict[str, Dict[str, Any]]):
         super(RenderWidget, self).__init__()

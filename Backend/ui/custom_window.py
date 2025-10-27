@@ -1,7 +1,7 @@
 from typing import Optional
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QMainWindow
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMainWindow
 
 
 class CustomWindow(QMainWindow):

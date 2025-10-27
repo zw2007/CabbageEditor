@@ -3,8 +3,8 @@ import os
 import time
 import traceback
 
-from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, QObject
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import QThread, Signal, Slot, QObject
+from PySide6.QtWidgets import QApplication
 from mcp_client import qa_one_sync
 from .file_handle import FileHandler
 from .static_components import root_dir
@@ -32,8 +32,8 @@ def get_bridge(central_manager=None):
 
 
 class WorkerThread(QThread):
-    work_finished = pyqtSignal()
-    result_ready = pyqtSignal(object)
+    work_finished = Signal()
+    result_ready = Signal(object)
 
     def __init__(self, func, *args, parent: QObject | None = None, **kwargs):
         super().__init__(parent)
@@ -52,13 +52,13 @@ class WorkerThread(QThread):
 
 
 class Bridge(QObject):
-    create_route = pyqtSignal(str, str, str, str, object)
-    ai_message = pyqtSignal(str)
-    remove_route = pyqtSignal(str)
-    ai_response = pyqtSignal(str)
-    dock_event = pyqtSignal(str, str)
-    command_to_main = pyqtSignal(str, str)
-    key_event = pyqtSignal(str)
+    create_route = Signal(str, str, str, str, object)
+    ai_message = Signal(str)
+    remove_route = Signal(str)
+    ai_response = Signal(str)
+    dock_event = Signal(str, str)
+    command_to_main = Signal(str, str)
+    key_event = Signal(str)
     script_dir = os.path.join(root_dir, "CabbageEditor", "Backend", "script")
     saves_dir = os.path.join(root_dir, "CabbageEditor", "saves")
     os.makedirs(script_dir, exist_ok=True)
@@ -73,7 +73,7 @@ class Bridge(QObject):
         self.scene_manager = SceneManager()
         self._workers: set[WorkerThread] = set()
 
-    @pyqtSlot(str, str, str, str, str)
+    @Slot(str, str, str, str, str)
     def add_dock_widget(self, routename, routepath, position="left", floatposition="None", size=None):
         try:
             if isinstance(size, str):
@@ -82,11 +82,11 @@ class Bridge(QObject):
             size = None
         self.create_route.emit(routename, routepath, position, floatposition, size)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def remove_dock_widget(self, routename):
         self.remove_route.emit(routename)
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def create_actor(self, scene_name, obj_path):
         scene = self.scene_manager.get_scene(scene_name)
         if not scene:
@@ -95,7 +95,7 @@ class Bridge(QObject):
         actor_data = scene.add_actor(obj_path)
         print("角色创建成功:", actor_data["name"])
 
-    @pyqtSlot(str)
+    @Slot(str)
     def create_scene(self, data):
         scene_name = json.loads(data).get("sceneName")
         if not scene_name:
@@ -104,7 +104,7 @@ class Bridge(QObject):
         self.scene_manager.create_scene(scene_name)
         print("场景创建成功:", scene_name)
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def send_message_to_dock(self, routename, json_data):
         try:
             self.central_manager.send_json_to_dock(routename, json_data)
@@ -113,7 +113,7 @@ class Bridge(QObject):
         except Exception as e:
             print(f"发送消息失败: {str(e)}")
 
-    @pyqtSlot(str)
+    @Slot(str)
     def send_message_to_ai(self, ai_message: str):
         def ai_work() -> str:
             try:
@@ -143,7 +143,7 @@ class Bridge(QObject):
         self._workers.add(worker)
         worker.start()
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def open_file_dialog(self, sceneName, file_type="model"):
         file_handler = FileHandler()
         scene = self.scene_manager.get_scene(sceneName)
@@ -183,7 +183,7 @@ class Bridge(QObject):
                     error_response = {"type": "error", "message": str(e)}
                     self.dock_event.emit("sceneError", json.dumps(error_response))
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def send_message_to_main(self, command_name, command_data):
         try:
             try:
@@ -252,7 +252,7 @@ class Bridge(QObject):
             return None
         return None
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def remove_actor(self, sceneName, actorName):
         scene = self.scene_manager.get_scene(sceneName)
         if not scene:
@@ -265,7 +265,7 @@ class Bridge(QObject):
         scene.remove_actor(actorName)
         print(f"角色 '{actorName}' 已从场景 '{sceneName}' 中删除")
 
-    @pyqtSlot(str)
+    @Slot(str)
     def actor_operation(self, data):
         try:
             Actor_data = json.loads(data)
@@ -295,7 +295,7 @@ class Bridge(QObject):
             print(f"Actor transform error: {str(e)}")
             return
 
-    @pyqtSlot(str)
+    @Slot(str)
     def camera_move(self, data):
         try:
             move_data = json.loads(data)
@@ -308,7 +308,7 @@ class Bridge(QObject):
         except Exception as e:
             print(f"摄像头移动错误: {str(e)}")
 
-    @pyqtSlot(str)
+    @Slot(str)
     def sun_direction(self, data):
         try:
             sun_data = json.loads(data)
@@ -322,7 +322,7 @@ class Bridge(QObject):
             error_response = {"type": "error", "message": str(e)}
             self.dock_event.emit("sunDirectionError", json.dumps(error_response))
 
-    @pyqtSlot(str, int)
+    @Slot(str, int)
     def execute_python_code(self, code, index):
         try:
             filename = f"blockly_code.py"
@@ -358,7 +358,7 @@ class Bridge(QObject):
             }
             self.dock_event.emit("scriptError", json.dumps(error_response))
 
-    @pyqtSlot(str)
+    @Slot(str)
     def scene_save(self, data):
         try:
             scene_data = json.loads(data)
@@ -384,11 +384,11 @@ class Bridge(QObject):
             }
             self.dock_event.emit("sceneError", json.dumps(error_response))
 
-    @pyqtSlot()
+    @Slot()
     def close_process(self):
         QApplication.quit()
         os._exit(0)
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def forward_dock_event(self, event_type, event_data):
         self.dock_event.emit(event_type, event_data)

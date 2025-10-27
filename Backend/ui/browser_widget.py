@@ -1,9 +1,9 @@
 import json
 
-from PyQt6.QtCore import Qt, QPoint, QUrl
-from PyQt6.QtGui import QColor, QGuiApplication
-from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtCore import Qt, QPoint, QUrl
+from PySide6.QtGui import QColor, QGuiApplication
+from PySide6.QtWebChannel import QWebChannel
+from PySide6.QtWebEngineWidgets import QWebEngineView
 from ui.dock_widget import RouteDockWidget, DockCleanupWidget
 from utils.bridge import get_bridge
 from utils.central_manager import CentralManager

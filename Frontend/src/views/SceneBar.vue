@@ -130,6 +130,12 @@ const ControlObject = (scene) => {
     const widgetName = `Object_${scene.name}`;
     window.pyBridge.add_dock_widget(widgetName, `/Object?sceneName=${currentSceneName.value}&objectName=${scene.name}&path=${encodeURIComponent(scene.path)}&routename=${widgetName}`, "right");
   }
+};const HandleResizeMove = (e) => {
+  if (dragState.value.isResizing) onResize(e);
+};
+
+const HandleResizeUp = () => {
+  if (dragState.value.isResizing) stopResize();
 };
 
 const UpdateSunPosition = () => {
@@ -285,7 +291,6 @@ onMounted(() => {
   document.addEventListener('mouseup', HandleResizeUp);
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
-  window.pyBridge.send_message_to_dock("AITalkBar", JSON.stringify({"content": "Hello, World!"}));
   if (window.pyBridge) {
     window.pyBridge.dock_event.connect(HandleDockEvent);
   };

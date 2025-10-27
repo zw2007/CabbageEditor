@@ -341,7 +341,6 @@ const loadSave = (save) => {
 onMounted(() => {
   document.addEventListener('keydown', handleKeyDown);
   loadArchives();
-  eventBus.on('archives-updated', loadArchives);
 });
 
 onUnmounted(() => {

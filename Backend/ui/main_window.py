@@ -1,10 +1,10 @@
 import os
 import sys
 
-from PyQt6.QtCore import Qt, QPoint, QEvent
-from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QMainWindow, QApplication, QDockWidget
+from PySide6.QtCore import Qt, QPoint, QEvent
+from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import QMainWindow, QApplication, QDockWidget
 from ui.browser_widget import BrowserWidget
 from ui.custom_window import CustomWindow
 from ui.render_widget import RenderWidget
