@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QMainWindow, QApplication, QDockWidget
 from ui.browser_widget import BrowserWidget
 from ui.custom_window import CustomWindow
 from ui.render_widget import RenderWidget
-from utils.static_components import scene_dict, url
+from utils.static_components import url
 
 
 class MainWindow(QMainWindow):
@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CoronaEngine")
         self.configure_web_engine()
 
-        self.render_widget = RenderWidget(self, scene_dict)
+        self.render_widget = RenderWidget(self)
         self.setCentralWidget(self.render_widget)
 
         self.osd = CustomWindow(self)
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         super().moveEvent(event)
 
     def reloadWidget(self) -> None:
-                                                 
+
         for dock in self.findChildren(QDockWidget):
             dock.setParent(None)
 

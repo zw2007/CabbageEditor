@@ -130,12 +130,6 @@ const ControlObject = (scene) => {
     const widgetName = `Object_${scene.name}`;
     window.pyBridge.add_dock_widget(widgetName, `/Object?sceneName=${currentSceneName.value}&objectName=${scene.name}&path=${encodeURIComponent(scene.path)}&routename=${widgetName}`, "right");
   }
-};const HandleResizeMove = (e) => {
-  if (dragState.value.isResizing) onResize(e);
-};
-
-const HandleResizeUp = () => {
-  if (dragState.value.isResizing) stopResize();
 };
 
 const UpdateSunPosition = () => {

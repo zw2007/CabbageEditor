@@ -286,11 +286,21 @@ class Bridge(QObject):
 
             match Operation:
                 case "Scale":
-                    CoronaEngine.Actor.scale(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
+                    # use Actor wrapper
+                    try:
+                        actor.scale([x, y, z])
+                    except Exception as e:
+                        print(f"Scale failed for actor '{actorName}': {e}")
                 case "Move":
-                    CoronaEngine.Actor.move(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
+                    try:
+                        actor.move([x, y, z])
+                    except Exception as e:
+                        print(f"Move failed for actor '{actorName}': {e}")
                 case "Rotate":
-                    CoronaEngine.Actor.rotate(scene_dict[sceneName]["actor_dict"][actorName]["actor"], [x, y, z])
+                    try:
+                        actor.rotate([x, y, z])
+                    except Exception as e:
+                        print(f"Rotate failed for actor '{actorName}': {e}")
         except Exception as e:
             print(f"Actor transform error: {str(e)}")
             return
@@ -304,7 +314,11 @@ class Bridge(QObject):
             forward = move_data.get("forward", [0.0, 1.5, 0.0])
             up = move_data.get("up", [0.0, -1.0, 0.0])
             fov = float(move_data.get("fov", 45.0))
-            CoronaEngine.Scene.setCamera(scene_dict[sceneName]["scene"], position, forward, up, fov)
+            scene = self.scene_manager.get_scene(sceneName)
+            if scene is None:
+                print(f"场景 '{sceneName}' 不存在，无法设置相机")
+                return
+            scene.set_camera(position, forward, up, fov)
         except Exception as e:
             print(f"摄像头移动错误: {str(e)}")
 
@@ -317,7 +331,11 @@ class Bridge(QObject):
             py = float(sun_data.get("py", 1.0))
             pz = float(sun_data.get("pz", 1.0))
             direction = [px, py, pz]
-            CoronaEngine.Scene.setSunDirection(scene_dict[sceneName]["scene"], direction)
+            scene = self.scene_manager.get_scene(sceneName)
+            if scene is None:
+                print(f"场景 '{sceneName}' 不存在，无法设置太阳方向")
+                return
+            scene.set_sun_direction(direction)
         except Exception as e:
             error_response = {"type": "error", "message": str(e)}
             self.dock_event.emit("sunDirectionError", json.dumps(error_response))

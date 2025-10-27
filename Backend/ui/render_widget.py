@@ -1,15 +1,17 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from PySide6.QtCore import QRect, Signal
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
+from utils.scene_manager import SceneManager
+
 
 class RenderWidget(QWidget):
     geometry_changed = Signal(QRect)
 
-    def __init__(self, Main_Window, scene_dict: Dict[str, Dict[str, Any]]):
+    def __init__(self, Main_Window):
         super(RenderWidget, self).__init__()
         self.Main_Window = Main_Window
 
@@ -22,17 +24,18 @@ class RenderWidget(QWidget):
         except ImportError:
             from corona_engine_fallback import CoronaEngine
 
-        self.mainscene = CoronaEngine.Scene(
-            int(self.winId()),False
-        )
+        # Create the engine scene using the native window id and register it with SceneManager
+        self.mainscene = CoronaEngine.Scene(int(self.winId()), False)
         self.mainscene.setCamera(
             [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
         )
         print(self.mainscene)
-        scene_dict["mainscene"]={
-            "scene":self.mainscene,
-            "actor_dict":{}
-        }
+
+        # Register the created engine scene with the centralized SceneManager
+        try:
+            SceneManager().create_scene("mainscene", engine_scene=self.mainscene)
+        except Exception as e:
+            print(f"Failed to register mainscene with SceneManager: {e}")
 
         self.image_path = os.path.join(os.path.dirname(__file__), "background.png")
         self.pixmap: Optional[QPixmap] = None

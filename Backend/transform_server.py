@@ -6,14 +6,14 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
                                          
 from utils.bridge import Bridge
-                          
-                      
+from utils.scene_manager import SceneManager
+
 
                
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TransformMCPServer")
 
-                               
+
 qt_bridge = Bridge()
 
 
@@ -32,6 +32,7 @@ app = FastMCP(
     lifespan=server_lifespan,
 )
 
+
 def call_actor_operation(scene_name: str, actor_name: str, operation: str, x: float, y: float, z: float):
     data = json.dumps({
         "sceneName": scene_name,
@@ -41,7 +42,7 @@ def call_actor_operation(scene_name: str, actor_name: str, operation: str, x: fl
         "y": y,
         "z": z
     })
-    qt_bridge.Actor_Operation(data)
+    qt_bridge.actor_operation(data)
     return f"Sent {operation}({x}, {y}, {z}) to actor '{actor_name}' in scene '{scene_name}'"
 
 @app.tool()
@@ -74,16 +75,15 @@ async def list_actors(scene_name: str) -> str:
         scene_name: Name of the scene
     """
     try:
-                                        
         actor_list = []
-        if scene_name in QtWindow.scene_dict:
-            actor_dict = QtWindow.scene_dict[scene_name]['actor_dict']
-            for actorname in actor_dict:
-                actor_list.append(actorname)
+        scene = SceneManager().get_scene(scene_name)
+        if scene:
+            actor_list = list(scene.actors.keys())
         return json.dumps({"scene": scene_name, "actors": actor_list}, indent=2)
     except Exception as e:
         logger.error(f"Error listing actors: {str(e)}")
         return f"Error listing actors: {str(e)}"
+
 
 def main():
     app.run()
