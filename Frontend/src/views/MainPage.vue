@@ -82,7 +82,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, reactive, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import "@/assets/welcome-page.css";
 
 const router = useRouter();
 
