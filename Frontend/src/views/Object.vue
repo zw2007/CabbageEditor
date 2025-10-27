@@ -4,11 +4,6 @@
     @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag" @dblclick="handleDoubleClick">
     <div class="text-white font-medium w-auto whitespace-nowrap">模型属性</div>
     <div class="flex w-full space-x-2 justify-end">
-      <!--导出py代码功能待定-->
-      <!-- <button @click="ExportCode"
-        class="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200">
-        导出
-      </button> -->
       <button @click.stop="CloseFloat"
         class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
         ×
@@ -506,32 +501,6 @@ const handleResizeMove = (e) => {
 const handleResizeUp = () => {
   if (dragState.value.isResizing) stopResize();
 };
-
-//导出积木py代码功能待定
-// const ExportCode = () => {
-//   try {
-//     const code = pythonGenerator.workspaceToCode(workspace.value);
-//     if (!code) {
-//       alert('没有可导出的代码');
-//       return;
-//     }
-//     exportedCode.value = code;
-//     showExportModal.value = true;
-//   } catch (error) {
-//     console.error('导出代码失败:', error);
-//     alert('导出代码时发生错误');
-//   }
-// };
-
-// const CopyToClipboard = async () => {
-//   try {
-//     await navigator.clipboard.writeText(exportedCode.value);
-//     alert('代码已复制');
-//   } catch (err) {
-//     console.error('复制失败:', err);
-//     alert('复制失败');
-//   }
-// };
 
 onMounted(() => {
   try {
