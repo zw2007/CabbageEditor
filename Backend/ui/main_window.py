@@ -12,6 +12,19 @@ from ..utils.static_components import url
 from typing import Optional
 
 
+def configure_web_engine() -> None:
+    profile = QWebEngineProfile.defaultProfile()
+    settings = profile.settings()
+    settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, False)
+
+    try:
+        profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.MemoryHttpCache)
+        profile.setHttpCacheMaximumSize(0)
+        profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
+    except Exception:
+        pass
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         self.osd = None
@@ -19,7 +32,7 @@ class MainWindow(QMainWindow):
         screen = QApplication.primaryScreen().availableGeometry()
         self.setGeometry(0, 0, screen.width(), screen.height())
         self.setWindowTitle("CoronaEngine")
-        self.configure_web_engine()
+        configure_web_engine()
 
         self.render_widget = RenderWidget(self)
         self.setCentralWidget(self.render_widget)
@@ -78,20 +91,8 @@ class MainWindow(QMainWindow):
             self.osd.resize(self.size())
         super().resizeEvent(event)
 
-    def configure_web_engine(self) -> None:
-        profile = QWebEngineProfile.defaultProfile()
-        settings = profile.settings()
-        settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, False)
-                                                                          
-        try:
-            profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.MemoryHttpCache)
-            profile.setHttpCacheMaximumSize(0)
-            profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
-        except Exception:
-            pass
 
-
-# Remove module-level side-effects. Provide init function to create QApplication and window.
+                                                                                            
 app: Optional[QApplication] = None
 window: Optional[MainWindow] = None
 

@@ -24,18 +24,18 @@ class RenderWidget(QWidget):
         except ImportError:
             from ..corona_engine_fallback import CoronaEngine
 
-        # Create an engine scene that is bound to this widget's native window handle
+                                                                                    
         self.engine_scene = CoronaEngine.Scene(int(self.winId()), False)
 
-        # Register a Scene wrapper with SceneManager so other code can access it and
-        # so higher-level operations go through our Scene API (camera/light, actor ops, etc.).
+                                                                                    
+                                                                                              
         try:
             self.scene_wrapper = SceneManager().create_scene("mainscene", engine_scene=self.engine_scene)
         except Exception as e:
             print(f"Failed to register mainscene with SceneManager: {e}")
             self.scene_wrapper = None
 
-        # Use the high-level Scene API to set camera rather than calling engine methods directly
+                                                                                                
         if self.scene_wrapper is not None:
             try:
                 self.scene_wrapper.set_camera(
@@ -44,7 +44,7 @@ class RenderWidget(QWidget):
             except Exception as e:
                 print(f"Failed to set camera on scene_wrapper: {e}")
         else:
-            # fall back to engine call if wrapper not available
+                                                               
             try:
                 self.engine_scene.setCamera(
                     [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0

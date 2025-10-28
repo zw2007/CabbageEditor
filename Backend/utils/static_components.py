@@ -16,6 +16,3 @@ except ImportError:
     except ImportError:
         print("[StaticComponents] CoronaEngine 未找到 (需要 -DBUILD_CORONA_EDITOR=ON)")
 
-
-scene_dict = {}
-

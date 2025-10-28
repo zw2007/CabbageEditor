@@ -11,14 +11,18 @@ from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngin
 class RouteDockWidget(QDockWidget):
     def __init__(self, browser, name: str, path: str, CentralManager, Main_Window, isFloat: bool):
         super(RouteDockWidget, self).__init__(name, Main_Window)
+        self.bridge = None
+        self.round_corner_stylesheet = None
+        self.channel = None
         self.Main_Window = Main_Window
         self.max_width = int(Main_Window.width() * 0.3)
         self.min_height = int(Main_Window.height() * 0.5)
         self.browser = browser
         self.isFloat = isFloat
-        self.centralmanager = CentralManager
+        self.central_manager = CentralManager
         self.name = name
         self.worker_threads = []
+        self.profile = None
 
         from PySide6.QtCore import QUrl
         from ..utils.static_components import url as base_url
@@ -104,14 +108,14 @@ class RouteDockWidget(QDockWidget):
 
     def setup_web_channel(self) -> None:
         self.channel = QWebChannel()
-        self.bridge = get_bridge(self.centralmanager)
+        self.bridge = get_bridge(self.central_manager)
         self.channel.registerObject("pybridge", self.bridge)
                                                         
         try:
             self.browser.page().setWebChannel(self.channel)
         except Exception:
             pass
-        self.centralmanager.register_dock(self.name, self)
+        self.central_manager.register_dock(self.name, self)
 
     def connect_signals(self) -> None:
         self.bridge.ai_response.connect(self.send_ai_message_to_js)
@@ -120,8 +124,6 @@ class RouteDockWidget(QDockWidget):
         self.destroyed.connect(self.cleanup_resources)
 
     def dock_event(self, event_type: str, event_data: str) -> None:
-                                           
-        target_ok = True
         try:
             data_obj = json.loads(event_data) if isinstance(event_data, str) else (event_data or {})
             target = data_obj.get("routename")
@@ -225,7 +227,7 @@ class RouteDockWidget(QDockWidget):
                 self.channel.deleteLater()
                                                 
             try:
-                self.centralmanager.delete_dock(self.name)
+                self.central_manager.delete_dock(self.name)
             except Exception:
                 pass
                                                                  
@@ -259,9 +261,9 @@ class RouteDockWidget(QDockWidget):
 class DockCleanupWidget(QWidget):
     def __init__(self, browser, name, central_manager):
         super(DockCleanupWidget, self).__init__()
-        self.centralmanager = central_manager
+        self.central_manager = central_manager
         self.browser = browser
-        dock = self.centralmanager.docks.get(name)
+        dock = self.central_manager.docks.get(name)
 
         if dock:
             print(f"[DEBUG] 开始删除 {name}")
@@ -291,8 +293,8 @@ class DockCleanupWidget(QWidget):
                 except RuntimeError as e:
                     print(f"[WARN] 对象已提前删除: {str(e)}")
 
-                if name in self.centralmanager.docks:
-                    del self.centralmanager.docks[name]
+                if name in self.central_manager.docks:
+                    del self.central_manager.docks[name]
 
                 QTimer.singleShot(50, step3)
 

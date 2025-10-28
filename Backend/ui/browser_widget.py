@@ -9,9 +9,40 @@ from ..utils.bridge import get_bridge
 from ..utils.central_manager import CentralManager
 
 
+def get_dock_area(position, floatposition, size):
+    position_map = {
+        "left": (Qt.DockWidgetArea.LeftDockWidgetArea, False, None),
+        "right": (Qt.DockWidgetArea.RightDockWidgetArea, False, None),
+        "top": (Qt.DockWidgetArea.TopDockWidgetArea, False, None),
+        "bottom": (Qt.DockWidgetArea.BottomDockWidgetArea, False, None),
+    }
+
+    if position.lower() == "float":
+        screen = QGuiApplication.primaryScreen()
+        float_position_map = {
+            "top_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()),
+            "bottom_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().bottomLeft()-QPoint(0,200)),
+            "top_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topRight()-QPoint(150,0)),
+            "bottom_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().bottomRight()-QPoint(150,200)),
+            "center": (
+                Qt.DockWidgetArea.AllDockWidgetAreas,
+                True,
+                screen.geometry().center() - QPoint(int((size or {}).get("width", 600)) // 2,
+                                                   int((size or {}).get("height", 320)) // 2),
+            ),
+        }
+        return float_position_map.get(floatposition.lower(), (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()))
+
+    return position_map.get(
+        position.lower(), (Qt.DockWidgetArea.LeftDockWidgetArea, False, None)
+    )
+
+
 class BrowserWidget(QWebEngineView):
     def __init__(self, Main_Window, url: QUrl):
         super(BrowserWidget, self).__init__(Main_Window)
+        self.bridge = None
+        self.channel = None
         self.Main_Window = Main_Window
         self.central_manager = CentralManager()
 
@@ -45,7 +76,7 @@ class BrowserWidget(QWebEngineView):
             return
         browser = QWebEngineView()
         browser.is_main_browser = False
-        dock_area, isFloat, pos = self.get_dock_area(position, floatposition, size)
+        dock_area, isFloat, pos = get_dock_area(position, floatposition, size)
 
         if self.central_manager.docks.get(routename):
             self.RemoveDockWidget(routename)
@@ -73,34 +104,6 @@ class BrowserWidget(QWebEngineView):
         if dock:
             self.Main_Window.removeDockWidget(dock)
             DockCleanupWidget(browser, routename, self.central_manager)
-
-    def get_dock_area(self, position, floatposition, size):
-        position_map = {
-            "left": (Qt.DockWidgetArea.LeftDockWidgetArea, False, None),
-            "right": (Qt.DockWidgetArea.RightDockWidgetArea, False, None),
-            "top": (Qt.DockWidgetArea.TopDockWidgetArea, False, None),
-            "bottom": (Qt.DockWidgetArea.BottomDockWidgetArea, False, None),
-        }
-
-        if position.lower() == "float":
-            screen = QGuiApplication.primaryScreen()
-            float_position_map = {
-                "top_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()),
-                "bottom_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().bottomLeft()-QPoint(0,200)),
-                "top_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topRight()-QPoint(150,0)),
-                "bottom_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().bottomRight()-QPoint(150,200)),
-                "center": (
-                    Qt.DockWidgetArea.AllDockWidgetAreas,
-                    True,
-                    screen.geometry().center() - QPoint(int((size or {}).get("width", 600)) // 2,
-                                                       int((size or {}).get("height", 320)) // 2),
-                ),
-            }
-            return float_position_map.get(floatposition.lower(), (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()))
-
-        return position_map.get(
-            position.lower(), (Qt.DockWidgetArea.LeftDockWidgetArea, False, None)
-        )
 
     def handle_command_to_main(self, command_name, command_data):
         if command_name == "go_home":

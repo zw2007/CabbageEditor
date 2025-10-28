@@ -166,7 +166,7 @@ class Bridge(QObject):
                     scene_data = json.loads(content)
                     actors = []
                             
-                    for actor_name in list(scene.actors.keys()):
+                    for actor_name in list(scene.list_actor_names()):
                         scene.remove_actor(actor_name)
                            
                     for actor in scene_data.get("actors", []):
@@ -196,11 +196,11 @@ class Bridge(QObject):
         except Exception as e:
             print(f"send_message_to_main failed: {str(e)}")
 
-    def _extract_key_text(self, command_name, command_data):
+    @staticmethod
+    def _extract_key_text(command_name, command_data):
         try:
             if not command_data:
                 return None
-            payload = None
             if not isinstance(command_data, str):
                 payload = command_data
             else:
@@ -354,7 +354,7 @@ class Bridge(QObject):
                     script_files.append(f.replace(".py", ""))
             run_script_content = ""
             for script in script_files:
-                # import via package path so modules load as Backend.script.* when runScript is executed
+                                                                                                        
                 run_script_content += f"from Backend.script import {script}\n"
 
             run_script_content += "\ndef run():\n"
@@ -365,7 +365,7 @@ class Bridge(QObject):
                 f.write(run_script_content)
             print(f"[DEBUG] 脚本文件创建成功: {filepath}")
             print(f"[DEBUG] runScript.py创建/覆盖成功: {run_script_path}")
-            # Patch generated script files to use package-relative imports (fix 'attempted relative import beyond top-level')
+                                                                                                                             
             try:
                 for sf in script_files:
                     sf_path = os.path.join(self.script_dir, f"{sf}.py")

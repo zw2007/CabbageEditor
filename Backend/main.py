@@ -4,7 +4,6 @@ import importlib.util
 import glob
 import queue
 
-# Ensure project root (parent of Backend/) is on sys.path so package imports like 'Backend.ui' work
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
@@ -18,10 +17,7 @@ os.environ["QT_QPA_PLATFORM"] = "windows"
 _cleaned_up = False
 
 from Backend.ui import main_window
-
-# Initialize the Qt app and main window once at import time so subsequent code can use `app`.
 app, window = main_window.init_app()
-
 msg_queue = queue.Queue()
 
 def cleanup_blockly_files():
@@ -41,7 +37,7 @@ def cleanup_blockly_files():
         
         script_dir = os.path.join(current_dir, 'script')
         if os.path.exists(script_dir):
-            for file in glob.glob(os.path.join(script_dir, 'blockly_code_*.py')):
+            for file in glob.glob(os.path.join(script_dir, 'blockly_code*.py')):
                 try:
                     os.remove(file)
                     print(f"已删除: {file}")

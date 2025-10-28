@@ -1,6 +1,5 @@
 from typing import Any, Dict
 import os
-import weakref
 
 from .engine_import import load_corona_engine
 
@@ -41,15 +40,12 @@ class Actor:
             raise
 
     def delete(self) -> bool:
-        """Try to delete this actor from the engine. Return True on success.
-        This allows both `actor.delete()` and Scene.remove_actor to work without conflict.
-        """
         try:
-            # Engine-level free/delete via class helper
+                                                       
             if CoronaEngine and hasattr(CoronaEngine, 'Actor') and hasattr(CoronaEngine.Actor, 'delete'):
                 CoronaEngine.Actor.delete(self.engine_obj)
                 return True
-            # instance-level delete
+                                   
             if hasattr(self.engine_obj, 'delete'):
                 self.engine_obj.delete()
                 return True

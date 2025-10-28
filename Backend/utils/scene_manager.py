@@ -19,13 +19,6 @@ class SceneManager:
         if scene_name not in self.scenes:
             scene = Scene(scene_name, engine_scene=engine_scene)
             self.scenes[scene_name] = scene
-                                                            
-            try:
-                from .static_components import scene_dict
-
-                scene_dict[scene_name] = {"scene": scene.engine_scene, "actor_dict": {}}
-            except Exception:
-                pass
         return self.scenes[scene_name]
 
     def get_scene(self, scene_name: str) -> Optional[Scene]:
@@ -36,12 +29,5 @@ class SceneManager:
         """删除场景"""
         if scene_name in self.scenes:
             del self.scenes[scene_name]
-            try:
-                from .static_components import scene_dict
-
-                if scene_name in scene_dict:
-                    del scene_dict[scene_name]
-            except Exception:
-                pass
             return True
         return False
