@@ -5,8 +5,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
                                          
-from utils.bridge import Bridge
-from utils.scene_manager import SceneManager
+from .utils.bridge import Bridge
+from .utils.scene_manager import SceneManager
 
 
                

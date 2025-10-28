@@ -206,7 +206,7 @@ def qa_one_sync(query: str, callback=None) -> str:
 
                                               
     async def _async_wrapper():
-        from transform_server import app as server_app
+        from .transform_server import app as server_app
                                         
         client = MCPClient()
         try:
@@ -237,7 +237,7 @@ def qa_one_sync(query: str, callback=None) -> str:
         return "执行异步操作失败。"
 
 async def main():
-    from transform_server import app as server_app
+    from .transform_server import app as server_app
     client = MCPClient()
     try:
                                           
