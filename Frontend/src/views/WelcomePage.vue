@@ -141,12 +141,6 @@ const toggleAnnouncements = () => {
     clearTimeout(autoCloseTimer.value);
     autoCloseTimer.value = null;
   }
-
-  if (showAnnouncements.value) {
-    autoCloseTimer.value = setTimeout(() => {
-      showAnnouncements.value = false;
-    }, 5000);
-  }
 };
 
 const closeAnnouncements = () => {

@@ -2,7 +2,7 @@
     <div class="flex h-[50px] w-[50px]">
         <div class="flex w-full h-full">
         <img 
-        src="../assets/cabbage3.png" 
+        src="../assets/cabbage.png" 
         class="h-20 w-20 fixed left-10 bottom-10 cursor-move" 
         @contextmenu="openContextMenu($event)"
         @dblclick="controlAITalkBar"
@@ -16,7 +16,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useDragResize } from '@/composables/useDragResize';
 
-const { dragState,startDrag,startResize,stopDrag,onDrag,stopResize,onResize, handleDoubleClick } = useDragResize();
+const { dragState,startDrag,stopDrag,onDrag,stopResize,onResize } = useDragResize();
 
 // 定义响应式状态变量
 const showContextMenu = ref(false);

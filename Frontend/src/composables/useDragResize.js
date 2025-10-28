@@ -30,7 +30,7 @@ export function useDragResize() {
         routename
       }));
     }
-    event.currentTarget.classList.add('bg-[#7BA590]/80');
+    event.currentTarget.classList.add('');
     event.preventDefault();
   };
 
@@ -59,7 +59,7 @@ export function useDragResize() {
     dragState.value.startX = 0;
     dragState.value.startY = 0;
 
-    event.currentTarget.classList.remove('bg-[#7BA590]/80');
+    event.currentTarget.classList.remove('');
     event.preventDefault();
   };
 
