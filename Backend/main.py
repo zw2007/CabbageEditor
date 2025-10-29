@@ -5,14 +5,10 @@ import glob
 import queue
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
-os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-software-rasterizer --enable-native-gpu-memory-buffers=false --disable-gpu-compositing --disable-gpu-rasterization --disable-oop-rasterization"
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
 os.environ["QT_QUICK_BACKEND"] = "software"
-os.environ["QT_ANGLE_PLATFORM"] = "d3d11"
-os.environ["QT_QPA_PLATFORM"] = "windows"
+os.environ['QT_OPENGL'] = 'software'
+os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
 
 _cleaned_up = False
 
