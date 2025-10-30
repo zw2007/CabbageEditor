@@ -51,13 +51,15 @@ export function useDragResize() {
     });
 
     const resizeState = ref({
-        isResizing: false,
-        direction: '',
-        startWidth: 0,
-        startHeight: 0,
-        startX: 0,
-        startY: 0,
-    });
+    isResizing: false,
+    direction: '',
+    startWidth: 0,
+    startHeight: 0,
+    startX: 0,
+    startY: 0,
+    startDockX: 0,
+    startDockY: 0
+  });
 
     // 节流后的拖拽事件发送
     const emitDragThrottled = throttle((deltaX, deltaY) => {
@@ -122,8 +124,14 @@ export function useDragResize() {
 
         resizeState.value.isResizing = true;
         resizeState.value.direction = direction;
-        resizeState.value.startWidth = event.currentTarget.parentElement.offsetWidth;
-        resizeState.value.startHeight = event.currentTarget.parentElement.offsetHeight;
+
+        const rect = event.currentTarget.parentElement.getBoundingClientRect();
+        resizeState.value.startWidth = rect.width;
+        resizeState.value.startHeight = rect.height;
+        // 关键修正：加上 screenX/Y 获取绝对屏幕坐标
+        resizeState.value.startDockX = rect.left + window.screenX;
+        resizeState.value.startDockY = rect.top + window.screenY;
+
         resizeState.value.startX = event.clientX;
         resizeState.value.startY = event.clientY;
 
@@ -136,44 +144,34 @@ export function useDragResize() {
         const deltaX = event.clientX - resizeState.value.startX;
         const deltaY = event.clientY - resizeState.value.startY;
 
+        let newX = resizeState.value.startDockX;
+        let newY = resizeState.value.startDockY;
         let newWidth = resizeState.value.startWidth;
         let newHeight = resizeState.value.startHeight;
 
-        switch (resizeState.value.direction) {
-            case 'n':
-                newHeight = Math.max(200, resizeState.value.startHeight - deltaY);
-                break;
-            case 's':
-                newHeight = Math.max(200, resizeState.value.startHeight + deltaY);
-                break;
-            case 'w': {
-                newWidth = Math.max(200, resizeState.value.startWidth - deltaX);
-                break;
-            }
-            case 'e':
-                newWidth = Math.max(200, resizeState.value.startWidth + deltaX);
-                break;
-            case 'nw': {
-                newWidth = Math.max(200, resizeState.value.startWidth - deltaX);
-                newHeight = Math.max(200, resizeState.value.startHeight - deltaY);
-                break;
-            }
-            case 'ne':
-                newWidth = Math.max(200, resizeState.value.startWidth + deltaX);
-                newHeight = Math.max(200, resizeState.value.startHeight - deltaY);
-                break;
-            case 'sw': {
-                newWidth = Math.max(200, resizeState.value.startWidth - deltaX);
-                newHeight = Math.max(200, resizeState.value.startHeight + deltaY);
-                break;
-            }
-            case 'se':
-                newWidth = Math.max(200, resizeState.value.startWidth + deltaX);
-                newHeight = Math.max(200, resizeState.value.startHeight + deltaY);
-                break;
+        const direction = resizeState.value.direction;
+
+        if (direction.includes('n')) {
+            newY = resizeState.value.startDockY + deltaY;
+            newHeight = resizeState.value.startHeight - deltaY;
+        }
+        if (direction.includes('s')) {
+            newHeight = resizeState.value.startHeight + deltaY;
+        }
+        if (direction.includes('w')) {
+            newX = resizeState.value.startDockX + deltaX;
+            newWidth = resizeState.value.startWidth - deltaX;
+        }
+        if (direction.includes('e')) {
+            newWidth = resizeState.value.startWidth + deltaX;
         }
 
-        safeForward('resize', {direction: resizeState.value.direction, width: newWidth, height: newHeight});
+        safeForward('resize', {
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: newHeight
+        });
         event.preventDefault();
     };
 

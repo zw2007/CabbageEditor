@@ -5,6 +5,7 @@ import glob
 import queue
 
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
+os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
 os.environ["QT_QUICK_BACKEND"] = "software"
 os.environ['QT_OPENGL'] = 'software'
 os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
@@ -73,7 +74,6 @@ def put_queue(msg):
 
 
 if __name__ == '__main__':
-    print('python main')
     cleanup_blockly_files()
     while (True):
         runscript_spec = importlib.util.find_spec("runScript")

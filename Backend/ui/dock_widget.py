@@ -14,6 +14,7 @@ class RouteDockWidget(QDockWidget):
         self.bridge = None
         self.round_corner_stylesheet = None
         self.channel = None
+        self.page = None
         self.Main_Window = Main_Window
         self.max_width = int(Main_Window.width() * 0.3)
         self.min_height = int(Main_Window.height() * 0.5)
@@ -69,11 +70,11 @@ class RouteDockWidget(QDockWidget):
                     pass
             except Exception:
                 pass
-            page = QWebEnginePage(self.profile, self.browser)
-            self.browser.setPage(page)
+            self.page = QWebEnginePage(self.profile, self.browser)
+            self.browser.setPage(self.page)
 
             try:
-                page.setBackgroundColor(QColor(Qt.GlobalColor.transparent))
+                self.page.setBackgroundColor(QColor(Qt.GlobalColor.transparent))
             except Exception:
                 pass
         except Exception:
@@ -152,13 +153,14 @@ class RouteDockWidget(QDockWidget):
         elif event_type == "resize":
             try:
                 data = data_obj if isinstance(data_obj, dict) else {}
-                x = int(data.get("x", self.pos().x()))
-                y = int(data.get("y", self.pos().y()))
-                width = int(data.get("width", self.width()))
-                height = int(data.get("height", self.height()))
+                x = int(data.get("x"))
+                y = int(data.get("y"))
+                width = int(data.get("width"))
+                height = int(data.get("height"))
+
                 self.move(x, y)
-                self.resize(width, height)
-                self.update()
+                self.resize(max(200, width), max(200, height))
+
             except Exception as e:
                 print(f"处理resize事件失败: {str(e)}")
 
@@ -223,6 +225,10 @@ class RouteDockWidget(QDockWidget):
                 pass
             if hasattr(self, "channel") and self.channel:
                 self.channel.deleteLater()
+
+            if hasattr(self, "page") and self.page:
+                self.page.deleteLater()
+                self.page = None
 
             try:
                 self.central_manager.delete_dock(self.name)
