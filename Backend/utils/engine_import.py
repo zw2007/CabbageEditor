@@ -1,4 +1,3 @@
-                                                                   
 """Robust loader for the CoronaEngine module.
 Tries multiple import paths so modules can be imported both as package (Backend.*) and as top-level scripts.
 Returns the module object or the CoronaEngine class from the fallback module, or None.
@@ -18,10 +17,10 @@ def load_corona_engine() -> Optional[object]:
     for name in candidates:
         try:
             mod = import_module(name)
-                                                                                                              
+
             if hasattr(mod, 'CoronaEngine'):
                 return getattr(mod, 'CoronaEngine')
-                                                                                                         
+
             return mod
         except Exception:
             continue

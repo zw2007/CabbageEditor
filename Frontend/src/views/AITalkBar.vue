@@ -2,16 +2,17 @@
   <div class="border-2 border-[#84a65b] rounded-md relative">
     <!-- 标题栏 -->
     <div
-      class="border-t-2 border-r-2 border-l-2 border-gray-950 titlebar fixed top-0 left-0 right-0 flex items-center w-full p-2 justify-between bg-[#84A65B] cursor-move select-none z-50"
-      @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag" @dblclick="handleDoubleClick">
+        class="border-t-2 border-r-2 border-l-2 border-gray-950 titlebar fixed top-0 left-0 right-0 flex items-center w-full p-2 justify-between bg-[#84A65B] cursor-move select-none z-50"
+        @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
+        @dblclick="handleDoubleClick">
       <div class="text-white font-medium w-auto whitespace-nowrap">助手</div>
       <!-- 按钮组 -->
       <div class="flex w-full space-x-2 justify-end">
         <button @click.stop="closeFloat"
-          class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+                class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
           ×
         </button>
-        </div>
+      </div>
     </div>
 
     <!-- 四周拖动边框 -->
@@ -31,7 +32,7 @@
         <div class="h-full max-w-6xl mx-auto p-6">
           <div class="h-full overflow-y-auto no-scrollbar space-y-2 pr-2">
             <div v-for="(message, index) in messages" :key="index"
-              class="p-3 bg-[#E8E8E8]/80 rounded-lg shadow-sm border border-gray-100">
+                 class="p-3 bg-[#E8E8E8]/80 rounded-lg shadow-sm border border-gray-100">
               <span :class="{
                 'text-blue-500': message.sender === 'AI',
                 'text-green-500': message.sender === 'User'
@@ -50,7 +51,7 @@
           <div class="flex space-x-2">
             <input v-model="userInput" @keyup.enter="sendMessage" placeholder="输入消息..." class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 
                   focus:outline-none transition-all border-gray-300
-                  hover:border-blue-300 focus:border-blue-400" />
+                  hover:border-blue-300 focus:border-blue-400"/>
             <button @click="sendMessage" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 
                   transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 
                   focus:ring-offset-2 whitespace-nowrap">
@@ -65,19 +66,19 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted, onUnmounted } from 'vue';
-import { useDragResize } from '@/composables/useDragResize';
+import {ref, inject, onMounted, onUnmounted} from 'vue';
+import {useDragResize} from '@/composables/useDragResize';
 
-const { dragState,startDrag,startResize,stopDrag,onDrag,stopResize,onResize, handleDoubleClick } = useDragResize();
+const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
 
 const messages = ref([
-  { sender: "AI", text: "你好！我是 AI。" },
+  {sender: "AI", text: "你好！我是 AI。"},
 ]);
 const userInput = ref('');
 
 const SendMessageToAI = (query) => {
   if (window.pyBridge) {
-    const testStr = JSON.stringify({ message: query });
+    const testStr = JSON.stringify({message: query});
     window.pyBridge.send_message_to_ai(testStr);
   } else {
     console.error("Python SendMessageToDock 未连接！");
@@ -86,7 +87,7 @@ const SendMessageToAI = (query) => {
 
 const sendMessage = () => {
   if (userInput.value.trim()) {
-    messages.value.push({ sender: "User", text: userInput.value });
+    messages.value.push({sender: "User", text: userInput.value});
     SendMessageToAI(userInput.value);
     userInput.value = '';
   }
@@ -99,7 +100,7 @@ window.receiveAIMessage = (data) => {
       try {
         message = JSON.parse(data);
       } catch {
-        message = { content: data };
+        message = {content: data};
       }
     }
 

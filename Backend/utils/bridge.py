@@ -13,7 +13,6 @@ from .engine_import import load_corona_engine
 
 CoronaEngine = load_corona_engine()
 
-
 _bridge_singleton = None
 
 
@@ -152,7 +151,7 @@ class Bridge(QObject):
             _, file_path = file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
             if file_path:
                 try:
-                              
+
                     actor_data = scene.add_actor(file_path)
                     response = {"name": actor_data["name"], "path": file_path}
                     self.dock_event.emit("actorCreated", json.dumps(response))
@@ -165,10 +164,10 @@ class Bridge(QObject):
                 try:
                     scene_data = json.loads(content)
                     actors = []
-                            
+
                     for actor_name in list(scene.list_actor_names()):
                         scene.remove_actor(actor_name)
-                           
+
                     for actor in scene_data.get("actors", []):
                         path = actor.get("path")
                         if path:
@@ -354,7 +353,6 @@ class Bridge(QObject):
                     script_files.append(f.replace(".py", ""))
             run_script_content = ""
             for script in script_files:
-                                                                                                        
                 run_script_content += f"from Backend.script import {script}\n"
 
             run_script_content += "\ndef run():\n"
@@ -365,7 +363,7 @@ class Bridge(QObject):
                 f.write(run_script_content)
             print(f"[DEBUG] 脚本文件创建成功: {filepath}")
             print(f"[DEBUG] runScript.py创建/覆盖成功: {run_script_path}")
-                                                                                                                             
+
             try:
                 for sf in script_files:
                     sf_path = os.path.join(self.script_dir, f"{sf}.py")
@@ -416,4 +414,5 @@ class Bridge(QObject):
 
     @Slot(str, str)
     def forward_dock_event(self, event_type, event_data):
+
         self.dock_event.emit(event_type, event_data)

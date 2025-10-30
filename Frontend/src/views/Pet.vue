@@ -1,22 +1,22 @@
 <template>
-    <div class="flex h-[50px] w-[50px]">
-        <div class="flex w-full h-full">
-        <img 
-        src="../assets/cabbage.png" 
-        class="h-20 w-20 fixed left-10 bottom-10 cursor-move" 
-        @contextmenu="openContextMenu($event)"
-        @dblclick="controlAITalkBar"
-        @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
-        >
-        </div>
+  <div class="flex h-[50px] w-[50px]">
+    <div class="flex w-full h-full">
+      <img
+          src="../assets/cabbage.png"
+          class="h-20 w-20 fixed left-10 bottom-10 cursor-move"
+          @contextmenu="openContextMenu($event)"
+          @dblclick="controlAITalkBar"
+          @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
+      >
     </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useDragResize } from '@/composables/useDragResize';
+import {ref, onMounted, onUnmounted} from 'vue';
+import {useDragResize} from '@/composables/useDragResize';
 
-const { dragState,startDrag,stopDrag,onDrag,stopResize,onResize } = useDragResize();
+const {dragState, startDrag, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 
 // 定义响应式状态变量
 const showContextMenu = ref(false);
@@ -42,7 +42,7 @@ const openContextMenu = (e) => {
       // 在一定时间后重置标记，避免影响后续操作
       setTimeout(() => {
         isClosingMenu = false;
-      }, 100); 
+      }, 100);
     }
   } else {
     if (!isClosingMenu) {
@@ -57,7 +57,7 @@ const openContextMenu = (e) => {
           // 在一定时间后重置标记，避免影响后续操作
           setTimeout(() => {
             isClosingMenu = false;
-          }, 100); 
+          }, 100);
         }
       };
       document.addEventListener('mousedown', closeOnRightClick);

@@ -1,19 +1,19 @@
-          
 from typing import Dict, List, Any, Optional
 from .engine_object_factory import EngineObjectFactory
 from .actor import Actor
 import os
 
+
 class Scene:
     def __init__(self, name: str, engine_scene: Any = None):
         self.name = name
-                                                                               
+
         if engine_scene is not None:
             self.engine_scene = engine_scene
         else:
-            self.engine_scene = EngineObjectFactory.create_scene()          
+            self.engine_scene = EngineObjectFactory.create_scene()
         self._actor_registry: Dict[str, Actor] = {}
-                                                              
+
         self._camera: Optional[Any] = None
         self._light: Optional[Any] = None
 
@@ -23,13 +23,12 @@ class Scene:
         self.camera_fov: float = 45.0
         self.sun_direction: List[float] = [1.0, 1.0, 1.0]
 
-                                                              
     def add_actor(self, obj_path: str) -> Dict[str, Any]:
         """在引擎 scene 中创建 actor，并返回兼容的 dict（name/path/engine_obj）。
         EngineObjectFactory.create_actor 已经实现了尝试复用已存在 engine actor 的逻辑。
         """
         actor = EngineObjectFactory.create_actor(self.engine_scene, obj_path)
-                                        
+
         name = getattr(actor, 'name', None) or getattr(actor.engine_obj, 'name', None) or os.path.basename(obj_path)
 
         if not self._engine_supports_listing():
@@ -50,7 +49,7 @@ class Scene:
         """Return list of actor names from engine if possible, else from minimal registry."""
         eng = self.engine_scene
         try:
-                                               
+
             if hasattr(eng, 'list_actor_names'):
                 return list(eng.list_actor_names())
             if hasattr(eng, 'getActorNames'):
@@ -58,7 +57,7 @@ class Scene:
             if hasattr(eng, 'get_actor_names'):
                 return list(eng.get_actor_names())
             if hasattr(eng, 'listActors'):
-                                                            
+
                 items = eng.listActors()
                 names = []
                 for it in items:
@@ -77,7 +76,6 @@ class Scene:
         except Exception:
             pass
 
-                                                                       
         return list(self._actor_registry.keys())
 
     def get_actor(self, actor_name: str) -> Optional[Actor]:
@@ -86,7 +84,7 @@ class Scene:
         """
         eng = self.engine_scene
         try:
-                                                                         
+
             obj = None
             try:
                 if hasattr(eng, 'getActor'):
@@ -99,16 +97,15 @@ class Scene:
                 obj = None
 
             if obj is not None:
-                                                      
+
                 cache = getattr(EngineObjectFactory, '_actor_cache', None)
                 if cache is not None and actor_name in cache:
                     return cache[actor_name]
-                                                                                 
+
                 return Actor(obj, getattr(obj, 'path', actor_name))
         except Exception:
             pass
 
-                                                                       
         return self._actor_registry.get(actor_name)
 
     def remove_actor(self, actor_name: str) -> bool:
@@ -118,7 +115,6 @@ class Scene:
         eng = self.engine_scene
         removed = False
 
-                                                                                             
         wrapper = self._actor_registry.get(actor_name)
         if wrapper is None:
             cache = getattr(EngineObjectFactory, '_actor_cache', None)
@@ -133,13 +129,13 @@ class Scene:
 
         if not removed:
             try:
-                                               
+
                 if hasattr(eng, 'removeActor'):
                     removed = bool(eng.removeActor(actor_name))
                 elif hasattr(eng, 'remove_actor'):
                     removed = bool(eng.remove_actor(actor_name))
                 else:
-                                                                   
+
                     actor_obj = None
                     if hasattr(eng, 'getActor'):
                         actor_obj = eng.getActor(actor_name)
@@ -154,13 +150,11 @@ class Scene:
             except Exception:
                 removed = False
 
-                                               
         if not removed and actor_name in self._actor_registry:
             del self._actor_registry[actor_name]
             removed = True
         return removed
 
-                                                    
     def ensure_camera(self):
         if self._camera is None:
             try:

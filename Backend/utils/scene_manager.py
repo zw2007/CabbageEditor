@@ -1,4 +1,3 @@
-                  
 from typing import Dict, Optional, Any
 from .scene import Scene
 
@@ -10,7 +9,7 @@ class SceneManager:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-                                                                 
+
             cls._instance.scenes = {}
         return cls._instance
 

@@ -2,12 +2,13 @@
   <div class="border-2 border-[#84a65b] rounded-md relative">
     <!-- 标题栏 -->
     <div class="titlebar flex items-center w-full p-2 rounded-t-md justify-between bg-[#84A65B] cursor-move select-none"
-      @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag" @dblclick="handleDoubleClick">
+         @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
+         @dblclick="handleDoubleClick">
       <div class="text-white font-medium w-auto whitespace-nowrap">场景</div>
       <!-- 按钮组 -->
       <div class="flex w-full space-x-2 justify-end">
         <button @click.stop="CloseFloat"
-          class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+                class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
           ×
         </button>
       </div>
@@ -27,27 +28,28 @@
     <div class="p-4 shadow-md w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 56px);">
       <div class="flex flex-wrap gap-2 mb-4">
         <div class="relative">
-        <button @click.stop="ToggleModelDropdown"
-          class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200 flex items-center">
+          <button @click.stop="ToggleModelDropdown"
+                  class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200 flex items-center">
             导入模型
-            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                 xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
-          <div v-if="ShowModelDropdown" 
-              v-click-outside="CloseModelDropdown"
-              class="absolute z-10 mt-1 w-40 bg-[#a8a4a3]/65 rounded-md shadow-lg">
+          <div v-if="ShowModelDropdown"
+               v-click-outside="CloseModelDropdown"
+               class="absolute z-10 mt-1 w-40 bg-[#a8a4a3]/65 rounded-md shadow-lg">
             <div class="py-1">
               <button @click.stop="ImportLightSource"
-                class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
+                      class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
                 光源
               </button>
               <button @click.stop="ImportCamera"
-                class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
+                      class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
                 摄像头
               </button>
               <button @click.stop="HandleFileImport"
-                class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
+                      class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
                 自定义模型
               </button>
             </div>
@@ -55,48 +57,49 @@
         </div>
 
         <button @click.stop="HandleSceneImport"
-          class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
           导入场景
         </button>
         <button @click.stop="SaveScene"
-          class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
           保存场景
         </button>
         <button @click.stop="DayNightCycle"
-          class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
           昼夜变换
         </button>
-        </div>
+      </div>
       <div class="flex items-center justify-between gap-2 mb-4">
         <label class="text-write whitespace-nowrap">光照方向：</label>
         <label class="text-write">x</label>
         <input type="number" step="0.1" @change="UpdateSunPosition" @input="e => px = e.target.value"
-          class="w-20 p-1 text-center border rounded-md focus:outline-none focus:ring-2 text-write focus:ring-blue-400 bg-[#686868]/70"
-          :value="px" />
+               class="w-20 p-1 text-center border rounded-md focus:outline-none focus:ring-2 text-write focus:ring-blue-400 bg-[#686868]/70"
+               :value="px"/>
         <label class="text-write">y</label>
         <input type="number" step="0.1" @change="UpdateSunPosition" @input="e => py = e.target.value"
-          class="w-20 p-1 text-center border rounded-md focus:outline-none focus:ring-2 text-write focus:ring-blue-400 bg-[#686868]/70"
-          :value="py" />
+               class="w-20 p-1 text-center border rounded-md focus:outline-none focus:ring-2 text-write focus:ring-blue-400 bg-[#686868]/70"
+               :value="py"/>
         <label class="text-write">z</label>
         <input type="number" step="0.1" @change="UpdateSunPosition" @input="e => pz = e.target.value"
-          class="w-20 p-1 text-center border rounded-md focus:outline-none focus:ring-2 text-write focus:ring-blue-400 bg-[#686868]/70"
-          :value="pz" />
+               class="w-20 p-1 text-center border rounded-md focus:outline-none focus:ring-2 text-write focus:ring-blue-400 bg-[#686868]/70"
+               :value="pz"/>
       </div>
 
       <div class="flex-1 overflow-y-auto">
         <!-- 场景列表 - 瀑布流布局 -->
         <div class="grid grid-cols-1 gap-4">
           <div v-for="scene in sceneImages" :key="scene.name" class="mb-4 break-inside-avoid">
-            <div class="bg-[#E8E8E8]/80 rounded-lg shadow-sm overflow-hidden hover:bg-[#E8E8E8]/80 transition-all duration-200">
+            <div
+                class="bg-[#E8E8E8]/80 rounded-lg shadow-sm overflow-hidden hover:bg-[#E8E8E8]/80 transition-all duration-200">
               <div class="p-3 flex justify-between items-center">
                 <div class="flex flex-col w-full">
                   <div class="flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-900 truncate" :title="scene.name"
-                      @dblclick="ControlObject(scene)">
+                          @dblclick="ControlObject(scene)">
                       {{ scene.name }}
                     </span>
-                    <button @click.stop="DeleteActor(scene)" 
-                      class="ml-2 w-4 h-4 flex items-center justify-center text-red-500 hover:text-red-700">
+                    <button @click.stop="DeleteActor(scene)"
+                            class="ml-2 w-4 h-4 flex items-center justify-center text-red-500 hover:text-red-700">
                       ×
                     </button>
                   </div>
@@ -110,19 +113,28 @@
         </div>
       </div>
     </div>
-    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { useDragResize } from '@/composables/useDragResize';
+import {ref, onMounted, onUnmounted} from 'vue';
+import {useRoute} from 'vue-router';
+import {useDragResize} from '@/composables/useDragResize';
 
-const { dragState,startDrag,startResize,stopDrag,onDrag,stopResize,onResize, handleDoubleClick } = useDragResize();
+const {
+  resizeState,
+  startDrag,
+  startResize,
+  stopDrag,
+  onDrag,
+  stopResize,
+  onResize,
+  handleDoubleClick
+} = useDragResize();
 const sceneImages = ref([]);
 const route = useRoute();
 const currentSceneName = ref('');
-const px=ref('1.0'), py=ref('1.0'), pz=ref('1.0');
+const px = ref('1.0'), py = ref('1.0'), pz = ref('1.0');
 
 
 const ControlObject = (scene) => {
@@ -140,8 +152,8 @@ const UpdateSunPosition = () => {
       py: parseFloat(py.value),
       pz: parseFloat(pz.value)
     }));
-    console.error('updateSunDirection', px.value, py.value, pz.value); 
-  } 
+    console.error('updateSunDirection', px.value, py.value, pz.value);
+  }
 }
 
 const SaveScene = () => {
@@ -177,7 +189,7 @@ const ImportCamera = () => {
   }
 };
 
-const HandleFileImport = () => { 
+const HandleFileImport = () => {
   ShowModelDropdown.value = false;
   if (window.pyBridge && window.pyBridge.open_file_dialog) {
     window.pyBridge.open_file_dialog(currentSceneName.value, 'model');
@@ -208,7 +220,7 @@ const HandleDockEvent = (event_type, event_data) => {
       const data = JSON.parse(event_data);
       if (data.actors && Array.isArray(data.actors)) {
         sceneImages.value = data.actors.map(actor => ({
-          name: actor.path.split('/').pop().split('.')[0], 
+          name: actor.path.split('/').pop().split('.')[0],
           path: actor.path,
           type: 'obj'
         }));
@@ -216,7 +228,7 @@ const HandleDockEvent = (event_type, event_data) => {
     } catch (error) {
       console.error('处理场景加载响应失败:', error);
     }
-  } else if (event_type === 'message'){
+  } else if (event_type === 'message') {
     console.log(event_data)
   }
 };
@@ -224,7 +236,7 @@ const HandleDockEvent = (event_type, event_data) => {
 const DeleteActor = (scene) => {
   try {
     if (window.pyBridge && window.pyBridge.remove_actor) {
-      window.pyBridge.remove_actor(currentSceneName.value,scene.name);
+      window.pyBridge.remove_actor(currentSceneName.value, scene.name);
       // 删除关联的Dock窗口
       const widgetName = `Object_${scene.name}`;
       window.pyBridge.remove_dock_widget(widgetName);
@@ -239,19 +251,19 @@ const DeleteActor = (scene) => {
 const DayNightCycle = () => {
   let currentTime = 0;
   const interval = setInterval(() => {
-    if(currentTime === 1440){
+    if (currentTime === 1440) {
       currentTime = 0;
     } else {
       currentTime++;
       const x = Math.cos(currentTime * Math.PI * 2 / 1440);
       const y = Math.sin(currentTime * Math.PI * 2 / 1440);
       const z = 0.0;
-      
+
       px.value = x.toFixed(2);
       py.value = y.toFixed(2);
       pz.value = z.toFixed(2);
-      
-      if(window.pyBridge){
+
+      if (window.pyBridge) {
         window.pyBridge.sun_direction(JSON.stringify({
           px: x,
           py: y,
@@ -260,7 +272,7 @@ const DayNightCycle = () => {
       }
     }
   }, 100); // Update every 100ms
-  
+
   return () => clearInterval(interval);
 };
 
@@ -272,11 +284,11 @@ const CloseFloat = () => {
 };
 
 const HandleResizeMove = (e) => {
-  if (dragState.value.isResizing) onResize(e);
+  if (resizeState.value.isResizing) onResize(e);
 };
 
 const HandleResizeUp = () => {
-  if (dragState.value.isResizing) stopResize();
+  if (resizeState.value.isResizing) stopResize();
 };
 
 onMounted(() => {
@@ -287,7 +299,8 @@ onMounted(() => {
   document.addEventListener('mouseup', stopDrag);
   if (window.pyBridge) {
     window.pyBridge.dock_event.connect(HandleDockEvent);
-  };
+  }
+
 });
 
 onUnmounted(() => {
@@ -297,6 +310,7 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopDrag);
   if (window.pyBridge) {
     window.pyBridge.dock_event.disconnect(HandleDockEvent);
-  };
+  }
+
 });
 </script>

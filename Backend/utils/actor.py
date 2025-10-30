@@ -41,11 +41,11 @@ class Actor:
 
     def delete(self) -> bool:
         try:
-                                                       
+
             if CoronaEngine and hasattr(CoronaEngine, 'Actor') and hasattr(CoronaEngine.Actor, 'delete'):
                 CoronaEngine.Actor.delete(self.engine_obj)
                 return True
-                                   
+
             if hasattr(self.engine_obj, 'delete'):
                 self.engine_obj.delete()
                 return True

@@ -19,7 +19,7 @@ class Camera:
             elif hasattr(self.engine_obj, 'set_transform'):
                 self.engine_obj.set_transform(position, forward, up, fov)
         except Exception:
-                                                                   
+
             pass
 
     def to_dict(self) -> Dict[str, Any]:

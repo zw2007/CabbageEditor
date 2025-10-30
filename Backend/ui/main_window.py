@@ -77,7 +77,7 @@ class MainWindow(QMainWindow):
 
         if self.browser_widget:
             self.browser_widget.setParent(None)
-                         
+
         self.browser_widget = BrowserWidget(self.osd, url)
         self.osd.setCentralWidget(self.browser_widget)
 
@@ -85,14 +85,13 @@ class MainWindow(QMainWindow):
         QApplication.instance().quit()
         event.accept()
         os._exit(0)
-    
-    def resizeEvent(self,event) -> None:
+
+    def resizeEvent(self, event) -> None:
         if getattr(self, "osd", None) is not None:
             self.osd.resize(self.size())
         super().resizeEvent(event)
 
 
-                                                                                            
 app: Optional[QApplication] = None
 window: Optional[MainWindow] = None
 

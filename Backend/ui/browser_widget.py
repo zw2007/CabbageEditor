@@ -21,17 +21,20 @@ def get_dock_area(position, floatposition, size):
         screen = QGuiApplication.primaryScreen()
         float_position_map = {
             "top_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()),
-            "bottom_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().bottomLeft()-QPoint(0,200)),
-            "top_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topRight()-QPoint(150,0)),
-            "bottom_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().bottomRight()-QPoint(150,200)),
+            "bottom_left": (Qt.DockWidgetArea.AllDockWidgetAreas, True,
+                            screen.geometry().bottomLeft() - QPoint(0, 200)),
+            "top_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topRight() - QPoint(150, 0)),
+            "bottom_right": (Qt.DockWidgetArea.AllDockWidgetAreas, True,
+                             screen.geometry().bottomRight() - QPoint(150, 200)),
             "center": (
                 Qt.DockWidgetArea.AllDockWidgetAreas,
                 True,
                 screen.geometry().center() - QPoint(int((size or {}).get("width", 600)) // 2,
-                                                   int((size or {}).get("height", 320)) // 2),
+                                                    int((size or {}).get("height", 320)) // 2),
             ),
         }
-        return float_position_map.get(floatposition.lower(), (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()))
+        return float_position_map.get(floatposition.lower(),
+                                      (Qt.DockWidgetArea.AllDockWidgetAreas, True, screen.geometry().topLeft()))
 
     return position_map.get(
         position.lower(), (Qt.DockWidgetArea.LeftDockWidgetArea, False, None)
@@ -86,8 +89,8 @@ class BrowserWidget(QWebEngineView):
             dock = RouteDockWidget(browser, routename, routepath, self.central_manager, self.Main_Window, isFloat)
             if isFloat:
                 if size:
-                    dock.resize(size.get("width"),size.get("height"))
-                    dock.browser.resize(size.get("width"),size.get("height"))
+                    dock.resize(size.get("width"), size.get("height"))
+                    dock.browser.resize(size.get("width"), size.get("height"))
                 dock.setWindowFlags(dock.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
                 dock.move(pos)
                 dock.show()

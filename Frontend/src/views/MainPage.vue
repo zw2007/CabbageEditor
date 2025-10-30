@@ -3,33 +3,33 @@
     <!-- 场景栏 -->
     <div class="w-full bg-[#4b6554]/90 border-b border-gray-200/65 h-12 relative">
       <div class="flex items-center space-x-1 px-2 overflow-x-auto scroll-smooth tab-container">
-        <div 
-          v-for="(tab, index) in tabs" 
-          :key="index"
-          class="px-4 py-2 cursor-pointer rounded-t-lg flex items-center gap-2" 
-          :class="{
+        <div
+            v-for="(tab, index) in tabs"
+            :key="index"
+            class="px-4 py-2 cursor-pointer rounded-t-lg flex items-center gap-2"
+            :class="{
             'bg-white/65 border-b-2 border-blue-500': activeTab === index,
             'hover:bg-gray-200/65': activeTab !== index
-          }" 
-          @click="switchTab(index)" 
-          @dblclick="openSceneBar(index)">
+          }"
+            @click="switchTab(index)"
+            @dblclick="openSceneBar(index)">
           <span
-            class="max-w-[120px] truncate px-2 py-1 text-gray-700 select-none"
-            >
+              class="max-w-[120px] truncate px-2 py-1 text-gray-700 select-none"
+          >
             {{ tab.name }}
           </span>
 
-        <button 
-          v-if="tabs.length > 1" 
-          @click.stop="closeTab(index)" 
-          class="hover:bg-gray-300/50 rounded-full p-1">
-          ×
-        </button>
+          <button
+              v-if="tabs.length > 1"
+              @click.stop="closeTab(index)"
+              class="hover:bg-gray-300/50 rounded-full p-1">
+            ×
+          </button>
         </div>
 
-        <button 
-          @click="addNewTab" 
-          class="px-4 py-2 text-xl font-bold hover:bg-gray-200/20 rounded-lg"
+        <button
+            @click="addNewTab"
+            class="px-4 py-2 text-xl font-bold hover:bg-gray-200/20 rounded-lg"
         >
           +
         </button>
@@ -37,38 +37,38 @@
     </div>
     <!-- 自定义弹窗 -->
     <div
-      v-if="showDialog"
-      class="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black/50"
+        v-if="showDialog"
+        class="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black/50"
     >
-      <div class="bg-gray-100/95 p-6 rounded shadow w-96 h-40 flex flex-col gap-4" >
+      <div class="bg-gray-100/95 p-6 rounded shadow w-96 h-40 flex flex-col gap-4">
         <div>
           <label
-            for="new-tab-name"
-            class="block text-sm font-medium text-gray-700"
+              for="new-tab-name"
+              class="block text-sm font-medium text-gray-700"
           >
-          添加场景
+            添加场景
           </label>
           <input
-            id="new-tab-name"
-            v-model="inputState.newTabName"
-            type="text"
-            class="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md w-full"
-            ref="nameInput"
-            @keyup.enter="confirmAddTab"
-            autofocus
+              id="new-tab-name"
+              v-model="inputState.newTabName"
+              type="text"
+              class="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-md w-full"
+              ref="nameInput"
+              @keyup.enter="confirmAddTab"
+              autofocus
           />
         </div>
         <div class="flex justify-between">
           <button
-            @click="confirmAddTab"
-            class="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors 
+              @click="confirmAddTab"
+              class="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors
                   duration-200 shadow-sm hover:shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             创建场景
           </button>
           <button
-            @click="cancelAddTab"
-            class="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors 
+              @click="cancelAddTab"
+              class="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors
                   duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             取消
@@ -80,8 +80,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, reactive, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import {ref, onMounted, onUnmounted, reactive, watch, nextTick} from 'vue';
+import {useRouter} from 'vue-router';
 
 const router = useRouter();
 
@@ -112,7 +112,7 @@ const cameraState = ref({
 
 // 标签页数据
 const tabs = ref([
-  { name: '场景1', id: 'scene1' },
+  {name: '场景1', id: 'scene1'},
 ]);
 
 // 添加新标签页
@@ -134,16 +134,16 @@ watch(showDialog, (newVal) => {
 
 const addNewTab = () => {
   const sceneNumbers = tabs.value
-  .map(tab => {
-      const match = tab.name.match(/^场景(\d+)$/);
-      return match ? parseInt(match[1]) : null
-    })
-    .filter(num => num !== null);
-  
-  const maxSceneNumber = sceneNumbers.length > 0 
-    ? Math.max(...sceneNumbers) 
-    : 0;
-  
+      .map(tab => {
+        const match = tab.name.match(/^场景(\d+)$/);
+        return match ? parseInt(match[1]) : null
+      })
+      .filter(num => num !== null);
+
+  const maxSceneNumber = sceneNumbers.length > 0
+      ? Math.max(...sceneNumbers)
+      : 0;
+
   inputState.newTabName = `场景${maxSceneNumber + 1}`;
   showDialog.value = true;
 };
@@ -191,7 +191,7 @@ const handleKeyDown = (event) => {
   }
 
   event.preventDefault();
-  switch(event.key.toLowerCase()) {
+  switch (event.key.toLowerCase()) {
     case 'w':
       handleCameraMove('up');
       break;
@@ -215,9 +215,9 @@ const handleKeyDown = (event) => {
 
 const handleCameraMove = (direction) => {
   const speed = 0.2;
-  const { position, forward } = cameraState.value;
-  
-  switch(direction) {
+  const {position, forward} = cameraState.value;
+
+  switch (direction) {
     case 'up':
       position[1] += speed;
       break;
@@ -292,7 +292,7 @@ const handleReturnToWelcome = () => {
 
 // 控制包菜精显示
 const cabbagetalk = () => {
-  const size = { width: 160, height: 160};
+  const size = {width: 160, height: 160};
   if (window.pyBridge) {
     window.pyBridge.add_dock_widget("Pet", "/Pet", "float", "bottom_right", JSON.stringify(size));
   }
@@ -307,16 +307,16 @@ const openSceneBar = (index) => {
 };
 
 const Out = () => {
-    if (window.pyBridge) {
-        window.pyBridge.close_process();
-    } else {
-        console.error("Python SendMessageToDock 未连接！");
-    }
+  if (window.pyBridge) {
+    window.pyBridge.close_process();
+  } else {
+    console.error("Python SendMessageToDock 未连接！");
+  }
 }
 
 const createScene = () => {
   if (window.pyBridge) {
-    window.pyBridge.create_scene(JSON.stringify({sceneName:"scene1"}));
+    window.pyBridge.create_scene(JSON.stringify({sceneName: "scene1"}));
   }
 };
 

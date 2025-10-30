@@ -4,15 +4,12 @@ import json
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
-                                         
+
 from .utils.bridge import Bridge
 from .utils.scene_manager import SceneManager
 
-
-               
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TransformMCPServer")
-
 
 qt_bridge = Bridge()
 
@@ -25,10 +22,10 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
     finally:
         logger.info("TransformMCP server shut down")
 
-         
+
 app = FastMCP(
     "TransformMCP",
-                                                                 
+
     lifespan=server_lifespan,
 )
 
@@ -45,8 +42,10 @@ def call_actor_operation(scene_name: str, actor_name: str, operation: str, x: fl
     qt_bridge.actor_operation(data)
     return f"Sent {operation}({x}, {y}, {z}) to actor '{actor_name}' in scene '{scene_name}'"
 
+
 @app.tool()
-async def transform_actor(actor_name: str, operation: str, x: float, y: float, z: float, scene_name: str="scene1") -> str:
+async def transform_actor(actor_name: str, operation: str, x: float, y: float, z: float,
+                          scene_name: str = "scene1") -> str:
     """
     Apply a transformation (Move/Rotate/Scale) to the  actor in the  scene.
 
@@ -87,6 +86,7 @@ async def list_actors(scene_name: str) -> str:
 
 def main():
     app.run()
+
 
 if __name__ == "__main__":
     main()

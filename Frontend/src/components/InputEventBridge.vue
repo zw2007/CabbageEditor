@@ -4,13 +4,13 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import {onMounted, onUnmounted, ref, computed} from 'vue'
+import {useRoute} from 'vue-router'
 
 // 组件属性：用于启用/禁用和场景信息（如：scene）
 const props = defineProps({
-  enabled: { type: Boolean, default: true }, // 是否启用输入事件捕获
-  sceneName: { type: String, default: 'scene1' }, // 场景名称
+  enabled: {type: Boolean, default: true}, // 是否启用输入事件捕获
+  sceneName: {type: String, default: 'scene1'}, // 场景名称
 })
 
 const route = useRoute()
@@ -206,8 +206,8 @@ function onContextMenu(e) {
 
 onMounted(() => {
   // 键盘事件监听
-  document.addEventListener('keydown', onKeyDown, { passive: true })
-  document.addEventListener('keyup', onKeyUp, { passive: true })
+  document.addEventListener('keydown', onKeyDown, {passive: true})
+  document.addEventListener('keyup', onKeyUp, {passive: true})
   // 鼠标事件监听（如需启用请取消注释）
   // document.addEventListener('mousedown', onMouseDown, { passive: true })
   // document.addEventListener('mouseup', onMouseUp, { passive: true })

@@ -4,7 +4,6 @@ import weakref
 
 from .engine_import import load_corona_engine
 
-                                                           
 CoronaEngine = load_corona_engine()
 if CoronaEngine is None:
     print("[EngineObjectFactory] 未找到 CoronaEngine (需要 -DBUILD_CORONA_EDITOR=ON)")
@@ -17,7 +16,6 @@ from .light import Light
 
 
 class EngineObjectFactory:
-                                                                                                
     _actor_cache = weakref.WeakValueDictionary()
     _camera_cache = weakref.WeakValueDictionary()
     _light_cache = weakref.WeakValueDictionary()
@@ -33,7 +31,7 @@ class EngineObjectFactory:
 
     @staticmethod
     def _try_find_engine_actor(engine_scene: Any, name: str):
-                                                                    
+
         try:
             if engine_scene is None:
                 return None
@@ -43,7 +41,7 @@ class EngineObjectFactory:
                 return engine_scene.get_actor(name)
             if hasattr(engine_scene, 'findActor'):
                 return engine_scene.findActor(name)
-                                                
+
             if hasattr(engine_scene, 'listActors'):
                 items = engine_scene.listActors()
                 for it in items:
@@ -63,14 +61,12 @@ class EngineObjectFactory:
 
         name = os.path.basename(obj_path)
 
-                                                           
         try:
             found = cls._try_find_engine_actor(engine_scene, name)
             if found is None:
-                                                        
                 found = cls._try_find_engine_actor(engine_scene, obj_path)
             if found is not None:
-                                                                                
+
                 eng_name = getattr(found, 'name', None)
                 if not eng_name and hasattr(found, 'get_name'):
                     try:
@@ -78,7 +74,7 @@ class EngineObjectFactory:
                     except Exception:
                         eng_name = None
                 key = eng_name or os.path.basename(obj_path) or obj_path
-                                                 
+
                 if key in cls._actor_cache:
                     return cls._actor_cache[key]
                 wrapper = Actor(found, obj_path)
@@ -88,7 +84,6 @@ class EngineObjectFactory:
         except Exception:
             pass
 
-                                             
         ActorCtor = getattr(CoronaEngine, 'Actor', None)
         if ActorCtor is None:
             raise RuntimeError("CoronaEngine 未提供 Actor 构造器")
@@ -101,7 +96,7 @@ class EngineObjectFactory:
                 raise RuntimeError(f"无法创建引擎Actor: {e}")
 
         wrapper = Actor(actor_obj, obj_path)
-                                                
+
         eng_name = getattr(actor_obj, 'name', None)
         if not eng_name and hasattr(actor_obj, 'get_name'):
             try:
@@ -117,7 +112,7 @@ class EngineObjectFactory:
     def create_camera(cls, engine_scene: Any, name: str = "MainCamera") -> Camera:
         if CoronaEngine is None:
             raise RuntimeError("CoronaEngine 未初始化，无法创建Camera")
-                         
+
         if name in cls._camera_cache:
             return cls._camera_cache[name]
 
@@ -128,7 +123,7 @@ class EngineObjectFactory:
                     cam_obj = engine_scene.getCamera()
                 elif hasattr(engine_scene, 'get_camera'):
                     cam_obj = engine_scene.get_camera()
-                                   
+
             if cam_obj is None:
                 CameraCtor = getattr(CoronaEngine, 'Camera', None)
                 if CameraCtor is not None:

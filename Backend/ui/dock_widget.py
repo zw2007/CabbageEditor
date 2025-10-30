@@ -50,18 +50,18 @@ class RouteDockWidget(QDockWidget):
         self.browser.setStyleSheet("background: transparent;")
         self.browser.page().setBackgroundColor(QColor(Qt.GlobalColor.transparent))
         self.browser.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-                                                                             
+
         try:
             self.profile = QWebEngineProfile(self)
-                                                                         
+
             try:
-                                                 
+
                 if hasattr(self.profile, "setOffTheRecord"):
                     self.profile.setOffTheRecord(True)
                 self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.MemoryHttpCache)
                 self.profile.setHttpCacheMaximumSize(0)
                 self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
-                                                        
+
                 try:
                     settings = self.profile.settings()
                     settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, False)
@@ -71,7 +71,7 @@ class RouteDockWidget(QDockWidget):
                 pass
             page = QWebEnginePage(self.profile, self.browser)
             self.browser.setPage(page)
-                                                              
+
             try:
                 page.setBackgroundColor(QColor(Qt.GlobalColor.transparent))
             except Exception:
@@ -79,7 +79,7 @@ class RouteDockWidget(QDockWidget):
         except Exception:
             self.profile = None
         self.browser.load(self.url)
-                                          
+
         try:
             self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
                 f"window.__dockRouteName = {json.dumps(name)};"))
@@ -88,7 +88,7 @@ class RouteDockWidget(QDockWidget):
 
         self.setWidget(self.browser)
 
-    def update_stylesheet(self) ->None:
+    def update_stylesheet(self) -> None:
         self.round_corner_stylesheet = """
             QDockWidget {
                 background: rgba(0, 0, 0, 0); 
@@ -110,7 +110,7 @@ class RouteDockWidget(QDockWidget):
         self.channel = QWebChannel()
         self.bridge = get_bridge(self.central_manager)
         self.channel.registerObject("pybridge", self.bridge)
-                                                        
+
         try:
             self.browser.page().setWebChannel(self.channel)
         except Exception:
@@ -130,9 +130,7 @@ class RouteDockWidget(QDockWidget):
             if target is not None and target != self.name:
                 return
         except Exception:
-                                     
             return
-
         if event_type == "drag" and self.isFloating():
             try:
                 data = data_obj if isinstance(data_obj, dict) else {}
@@ -203,7 +201,7 @@ class RouteDockWidget(QDockWidget):
 
     def cleanup_resources(self) -> None:
         try:
-                                                                          
+
             try:
                 self.bridge.ai_response.disconnect(self.send_ai_message_to_js)
             except Exception:
@@ -212,7 +210,7 @@ class RouteDockWidget(QDockWidget):
                 self.bridge.dock_event.disconnect(self.dock_event)
             except Exception:
                 pass
-                                                         
+
             try:
                 if hasattr(self, "channel") and self.channel:
                     self.channel.deregisterObject(self.bridge)
@@ -225,12 +223,12 @@ class RouteDockWidget(QDockWidget):
                 pass
             if hasattr(self, "channel") and self.channel:
                 self.channel.deleteLater()
-                                                
+
             try:
                 self.central_manager.delete_dock(self.name)
             except Exception:
                 pass
-                                                                 
+
             try:
                 if getattr(self, "profile", None) is not None:
                     try:
@@ -241,7 +239,7 @@ class RouteDockWidget(QDockWidget):
                     self.profile = None
             except Exception:
                 pass
-                                       
+
             if hasattr(self, "browser"):
                 self.browser.deleteLater()
                 print(f"清理浏览器资源: {self.name}")
@@ -257,6 +255,7 @@ class RouteDockWidget(QDockWidget):
         except Exception as e:
             print(f"关闭事件处理异常: {str(e)}")
         super().closeEvent(event)
+
 
 class DockCleanupWidget(QWidget):
     def __init__(self, browser, name, central_manager):
