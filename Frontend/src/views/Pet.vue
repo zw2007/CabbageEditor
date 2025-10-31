@@ -18,6 +18,12 @@ import {useDragResize} from '@/composables/useDragResize';
 
 const {dragState, startDrag, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 
+async function waitWebChannel() {
+  if (window.appService) return true;
+  if (window.webChannelReady) { try { await window.webChannelReady; } catch {} }
+  return !!window.appService;
+}
+
 // 定义响应式状态变量
 const showContextMenu = ref(false);
 const contextMenuX = ref(0);
@@ -71,9 +77,12 @@ const closeContextMenu = () => {
 };
 
 // 打开AI对话栏
-const controlAITalkBar = () => {
-  if (window.pyBridge) {
-    window.pyBridge.add_dock_widget("AITalkBar", "/AITalkBar", "left");
+const controlAITalkBar = async () => {
+  await waitWebChannel();
+  if (window.appService && typeof window.appService.add_dock_widget === 'function') {
+    window.appService.add_dock_widget("AITalkBar", "/AITalkBar", "left", "None", JSON.stringify({width: 400, height: 300}));
+  } else {
+    console.error('未发现 Dock 控制通道 (appService)');
   }
 };
 

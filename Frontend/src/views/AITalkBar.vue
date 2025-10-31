@@ -76,12 +76,23 @@ const messages = ref([
 ]);
 const userInput = ref('');
 
-const SendMessageToAI = (query) => {
-  if (window.pyBridge) {
-    const testStr = JSON.stringify({message: query});
-    window.pyBridge.send_message_to_ai(testStr);
+async function waitWebChannel() {
+  if (window.pyBridge || window.aiService || window.appService) return true;
+  if (window.webChannelReady) {
+    try { await window.webChannelReady; } catch {}
+  }
+  return !!(window.pyBridge || window.aiService || window.appService);
+}
+
+const SendMessageToAI = async (query) => {
+  await waitWebChannel();
+  const payload = JSON.stringify({message: query});
+  if (window.aiService && typeof window.aiService.send_message_to_ai === 'function') {
+    window.aiService.send_message_to_ai(payload);
+  } else if (window.pyBridge && typeof window.pyBridge.send_message_to_ai === 'function') {
+    window.pyBridge.send_message_to_ai(payload);
   } else {
-    console.error("Python SendMessageToDock 未连接！");
+    console.error("未发现 AI 通道 (aiService/pyBridge)");
   }
 };
 
@@ -122,9 +133,14 @@ window.receiveAIMessage = (data) => {
 };
 
 //关闭浮动窗口
-const closeFloat = () => {
-  if (window.pyBridge) {
+const closeFloat = async () => {
+  await waitWebChannel();
+  if (window.appService && typeof window.appService.remove_dock_widget === 'function') {
+    window.appService.remove_dock_widget("AITalkBar");
+  } else if (window.pyBridge && typeof window.pyBridge.remove_dock_widget === 'function') {
     window.pyBridge.remove_dock_widget("AITalkBar");
+  } else {
+    console.error("未发现 Dock 控制通道 (appService/pyBridge)");
   }
 };
 /*
@@ -158,14 +174,17 @@ const handleDockEvent = (eventType, eventData) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await waitWebChannel();
   document.addEventListener('mousemove', handleResizeMove);
   document.addEventListener('mouseup', handleResizeUp);
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
   document.addEventListener('mousemove', onResize);
   document.addEventListener('mouseup', stopResize);
-  window.pyBridge.dock_event.connect(handleDockEvent);
+  if (window.pyBridge && window.pyBridge.dock_event) {
+    try { window.pyBridge.dock_event.connect(handleDockEvent); } catch {}
+  }
 });
 
 onUnmounted(() => {
@@ -175,6 +194,8 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopDrag);
   document.removeEventListener('mousemove', onResize);
   document.removeEventListener('mouseup', stopResize);
-  window.pyBridge.dock_event.disconnect(handleDockEvent);
+  if (window.pyBridge && window.pyBridge.dock_event) {
+    try { window.pyBridge.dock_event.disconnect(handleDockEvent); } catch {}
+  }
 });
 </script>

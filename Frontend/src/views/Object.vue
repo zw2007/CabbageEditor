@@ -171,6 +171,14 @@ import * as CN from 'blockly/msg/zh-hans';
 import {pythonGenerator} from 'blockly/python';
 import {useDragResize} from '@/composables/useDragResize';
 
+async function waitWebChannel() {
+  if (window.pyBridge || window.sceneService || window.appService || window.scriptingService) return true;
+  if (window.webChannelReady) {
+    try { await window.webChannelReady; } catch {}
+  }
+  return !!(window.pyBridge || window.sceneService || window.appService || window.scriptingService);
+}
+
 const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
 const workspace = ref(null);
 const character = ref('');
@@ -363,8 +371,13 @@ const initBlockly = () => {
       callback: async () => {
         const code = pythonGenerator.workspaceToCode(workspace.value);
         console.log(code);
-        if (window.pyBridge) {
-          window.pyBridge.execute_python_code(code, actorname.value);
+        await waitWebChannel();
+        if (window.scriptingService && typeof window.scriptingService.execute_python_code === 'function') {
+          window.scriptingService.execute_python_code(code, 0);
+        } else if (window.pyBridge && typeof window.pyBridge.execute_python_code === 'function') {
+          window.pyBridge.execute_python_code(code, 0);
+        } else {
+          console.error('未发现脚本执行通道 (scriptingService/pyBridge)');
         }
       },
       scopeType: Blockly.ContextMenuRegistry.ScopeType.WORKSPACE,

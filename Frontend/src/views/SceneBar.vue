@@ -121,6 +121,12 @@ import {ref, onMounted, onUnmounted} from 'vue';
 import {useRoute} from 'vue-router';
 import {useDragResize} from '@/composables/useDragResize';
 
+async function waitWebChannel() {
+  if (window.appService || window.sceneService || window.projectService) return true;
+  if (window.webChannelReady) { try { await window.webChannelReady; } catch {} }
+  return !!(window.appService || window.sceneService || window.projectService);
+}
+
 const {
   resizeState,
   startDrag,
@@ -137,35 +143,36 @@ const currentSceneName = ref('');
 const px = ref('1.0'), py = ref('1.0'), pz = ref('1.0');
 
 
-const ControlObject = (scene) => {
-  if (window.pyBridge) {
-    const widgetName = `Object_${scene.name}`;
-    window.pyBridge.add_dock_widget(widgetName, `/Object?sceneName=${currentSceneName.value}&objectName=${scene.name}&path=${encodeURIComponent(scene.path)}&routename=${widgetName}`, "right");
+const ControlObject = async (scene) => {
+  await waitWebChannel();
+  const widgetName = `Object_${scene.name}`;
+  const routePath = `/Object?sceneName=${currentSceneName.value}&objectName=${scene.name}&path=${encodeURIComponent(scene.path)}&routename=${widgetName}`;
+  if (window.appService && typeof window.appService.add_dock_widget === 'function') {
+    window.appService.add_dock_widget(widgetName, routePath, "right", "None", JSON.stringify({width: 520, height: 640}));
   }
 };
 
-const UpdateSunPosition = () => {
-  if (window.pyBridge) {
-    window.pyBridge.sun_direction(JSON.stringify({
-      sceneName: currentSceneName.value,
-      px: parseFloat(px.value),
-      py: parseFloat(py.value),
-      pz: parseFloat(pz.value)
-    }));
-    console.error('updateSunDirection', px.value, py.value, pz.value);
+const UpdateSunPosition = async () => {
+  await waitWebChannel();
+  const payload = JSON.stringify({
+    sceneName: currentSceneName.value,
+    px: parseFloat(px.value),
+    py: parseFloat(py.value),
+    pz: parseFloat(pz.value)
+  });
+  if (window.sceneService && typeof window.sceneService.sun_direction === 'function') {
+    window.sceneService.sun_direction(payload);
   }
 }
 
-const SaveScene = () => {
-  if (window.pyBridge && window.pyBridge.scene_save) {
-    const sceneData = {
-      actors: sceneImages.value.map(scene => ({
-        name: scene.name,
-        path: scene.path,
-        type: scene.type
-      }))
-    };
-    window.pyBridge.scene_save(JSON.stringify(sceneData));
+const SaveScene = async () => {
+  await waitWebChannel();
+  const sceneData = {
+    actors: sceneImages.value.map(scene => ({ name: scene.name, path: scene.path, type: scene.type }))
+  };
+  const payload = JSON.stringify(sceneData);
+  if (window.projectService && typeof window.projectService.scene_save === 'function') {
+    window.projectService.scene_save(payload);
   }
 };
 
@@ -175,73 +182,59 @@ const ToggleModelDropdown = () => {
   ShowModelDropdown.value = !ShowModelDropdown.value;
 }
 // 导入光源
-const ImportLightSource = () => {
+const ImportLightSource = async () => {
   ShowModelDropdown.value = false;
-  if (window.pyBridge && window.pyBridge.createLight) {
-    window.pyBridge.CreateLight(currentSceneName.value);
-  }
+  console.warn('ImportLightSource 未实现专用服务，保留原行为');
 };
 // 导入摄像头
-const ImportCamera = () => {
+const ImportCamera = async () => {
   ShowModelDropdown.value = false;
-  if (window.pyBridge && window.pyBridge.createCamera) {
-    window.pyBridge.CreateCamera(currentSceneName.value);
-  }
+  console.warn('ImportCamera 未实现专用服务，保留原行为');
 };
 
-const HandleFileImport = () => {
+const HandleFileImport = async () => {
   ShowModelDropdown.value = false;
-  if (window.pyBridge && window.pyBridge.open_file_dialog) {
-    window.pyBridge.open_file_dialog(currentSceneName.value, 'model');
+  await waitWebChannel();
+  if (window.projectService && typeof window.projectService.open_file_dialog === 'function') {
+    window.projectService.open_file_dialog(currentSceneName.value, 'model');
   }
 };
 
-const HandleSceneImport = () => {
-  if (window.pyBridge && window.pyBridge.open_file_dialog) {
-    window.pyBridge.open_file_dialog(currentSceneName.value, 'scene');
+const HandleSceneImport = async () => {
+  await waitWebChannel();
+  if (window.projectService && typeof window.projectService.open_file_dialog === 'function') {
+    window.projectService.open_file_dialog(currentSceneName.value, 'scene');
   }
 };
 
-const HandleDockEvent = (event_type, event_data) => {
-  if (event_type === 'actorCreated') {
-    try {
-      const data = JSON.parse(event_data);
-      // 使用后端返回的数据创建场景项
-      sceneImages.value.push({
-        name: data.name,         // 使用返回的名称
-        path: data.path,         // 使用返回的完整路径
-        type: 'obj'
-      });
-    } catch (error) {
-      console.error('处理Actor创建响应失败:', error);
-    }
-  } else if (event_type === 'sceneLoaded') {
-    try {
-      const data = JSON.parse(event_data);
-      if (data.actors && Array.isArray(data.actors)) {
-        sceneImages.value = data.actors.map(actor => ({
-          name: actor.path.split('/').pop().split('.')[0],
-          path: actor.path,
-          type: 'obj'
-        }));
-      }
-    } catch (error) {
-      console.error('处理场景加载响应失败:', error);
-    }
-  } else if (event_type === 'message') {
-    console.log(event_data)
-  }
-};
-
-const DeleteActor = (scene) => {
+// 监听 sceneService 信号（替代 pyBridge.dock_event）
+function onActorCreated(event_data) {
   try {
-    if (window.pyBridge && window.pyBridge.remove_actor) {
-      window.pyBridge.remove_actor(currentSceneName.value, scene.name);
-      // 删除关联的Dock窗口
-      const widgetName = `Object_${scene.name}`;
-      window.pyBridge.remove_dock_widget(widgetName);
+    const data = typeof event_data === 'string' ? JSON.parse(event_data) : event_data;
+    if (data && data.name && data.path) {
+      sceneImages.value.push({ name: data.name, path: data.path, type: 'obj' });
     }
-    // 从场景列表中移除
+  } catch (e) { console.error('处理Actor创建响应失败:', e); }
+}
+function onSceneLoaded(event_data) {
+  try {
+    const data = typeof event_data === 'string' ? JSON.parse(event_data) : event_data;
+    if (data && Array.isArray(data.actors)) {
+      sceneImages.value = data.actors.map(actor => ({ name: actor.path.split('/').pop().split('.')[0], path: actor.path, type: 'obj' }));
+    }
+  } catch (e) { console.error('处理场景加载响应失败:', e); }
+}
+
+const DeleteActor = async (scene) => {
+  await waitWebChannel();
+  try {
+    if (window.sceneService && typeof window.sceneService.remove_actor === 'function') {
+      window.sceneService.remove_actor(currentSceneName.value, scene.name);
+    }
+    const widgetName = `Object_${scene.name}`;
+    if (window.appService && typeof window.appService.remove_dock_widget === 'function') {
+      window.appService.remove_dock_widget(widgetName);
+    }
     sceneImages.value = sceneImages.value.filter(item => item.name !== scene.name);
   } catch (error) {
     console.error('删除角色失败:', error);
@@ -263,23 +256,20 @@ const DayNightCycle = () => {
       py.value = y.toFixed(2);
       pz.value = z.toFixed(2);
 
-      if (window.pyBridge) {
-        window.pyBridge.sun_direction(JSON.stringify({
-          px: x,
-          py: y,
-          pz: z
-        }));
+      if (window.sceneService && typeof window.sceneService.sun_direction === 'function') {
+        window.sceneService.sun_direction(JSON.stringify({ px: x, py: y, pz: z }));
       }
     }
-  }, 100); // Update every 100ms
+  }, 100);
 
   return () => clearInterval(interval);
 };
 
 //关闭浮动窗口
-const CloseFloat = () => {
-  if (window.pyBridge) {
-    window.pyBridge.remove_dock_widget("SceneBar");
+const CloseFloat = async () => {
+  await waitWebChannel();
+  if (window.appService && typeof window.appService.remove_dock_widget === 'function') {
+    window.appService.remove_dock_widget("SceneBar");
   }
 };
 
@@ -291,16 +281,17 @@ const HandleResizeUp = () => {
   if (resizeState.value.isResizing) stopResize();
 };
 
-onMounted(() => {
+onMounted(async () => {
   currentSceneName.value = route.query.sceneName || 'scene1';
   document.addEventListener('mousemove', HandleResizeMove);
   document.addEventListener('mouseup', HandleResizeUp);
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
-  if (window.pyBridge) {
-    window.pyBridge.dock_event.connect(HandleDockEvent);
+  await waitWebChannel();
+  if (window.sceneService) {
+    try { window.sceneService.actor_created.connect(onActorCreated); } catch {}
+    try { window.sceneService.scene_loaded.connect(onSceneLoaded); } catch {}
   }
-
 });
 
 onUnmounted(() => {
@@ -308,8 +299,9 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', HandleResizeUp);
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
-  if (window.pyBridge) {
-    window.pyBridge.dock_event.disconnect(HandleDockEvent);
+  if (window.sceneService) {
+    try { window.sceneService.actor_created.disconnect(onActorCreated); } catch {}
+    try { window.sceneService.scene_loaded.disconnect(onSceneLoaded); } catch {}
   }
 
 });
