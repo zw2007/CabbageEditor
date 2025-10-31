@@ -4,19 +4,23 @@ from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtCore import QObject
 
-from .bridge import get_bridge
+# 直接在此维护 SceneManager 单例，避免依赖 Bridge
+from .scene_manager import SceneManager
 
 
 class WebChannelContext:
-    """
-    持有一次注册中创建的对象，便于调用方保存和清理。
-    """
-
-    def __init__(self, channel: QWebChannel, bridge: QObject,
-                 services: dict[str, QObject] | None = None) -> None:
+    def __init__(self, channel: QWebChannel, services: dict[str, QObject] | None = None) -> None:
         self.channel = channel
-        self.bridge = bridge
         self.services = services or {}
+
+
+_scene_manager_singleton: SceneManager | None = None
+
+def _get_scene_manager() -> SceneManager:
+    global _scene_manager_singleton
+    if _scene_manager_singleton is None:
+        _scene_manager_singleton = SceneManager()
+    return _scene_manager_singleton
 
 
 def setup_webchannel_for_view(
@@ -27,9 +31,9 @@ def setup_webchannel_for_view(
     on_create_route: _t.Callable | None = None,
     on_remove_route: _t.Callable | None = None,
     on_message_to_dock: _t.Callable[[str, str], None] | None = None,
+    on_command_to_main: _t.Callable[[str, str], None] | None = None,
 ) -> WebChannelContext:
     channel = QWebChannel()
-    bridge = get_bridge(central_manager)
 
     services: dict[str, QObject] = {}
 
@@ -41,11 +45,11 @@ def setup_webchannel_for_view(
             from Backend.services.project import ProjectService
             from Backend.services.app import AppService
 
-            scene_service = SceneService(bridge.scene_manager, bridge)
-            ai_service = AIService(bridge)
-            scripting_service = ScriptingService(bridge)
-            project_service = ProjectService(scene_service, bridge)
-            app_service = AppService(bridge)
+            scene_service = SceneService(_get_scene_manager(), None)
+            ai_service = AIService(None)
+            scripting_service = ScriptingService(None)
+            project_service = ProjectService(scene_service, None)
+            app_service = AppService(None)
 
             channel.registerObject("sceneService", scene_service)
             channel.registerObject("aiService", ai_service)
@@ -53,50 +57,17 @@ def setup_webchannel_for_view(
             channel.registerObject("projectService", project_service)
             channel.registerObject("appService", app_service)
 
-            # 回填到 bridge，供 Bridge 槽函数委托
-            try:
-                bridge.scene_service = scene_service
-                bridge.ai_service = ai_service
-                bridge.scripting_service = scripting_service
-                bridge.project_service = project_service
-                bridge.app_service = app_service
-            except Exception:
-                pass
-
-            # AppService -> UI 回调
-            if on_create_route:
+            # AppService -> UI 回调（优先使用传入回调，其次尝试 central_manager）
+            if on_create_route is not None:
                 app_service.create_route_requested.connect(on_create_route)
-            else:
-                try:
-                    app_service.create_route_requested.connect(lambda a,b,c,d,e: bridge.create_route.emit(a,b,c,d,e))
-                except Exception:
-                    pass
-            if on_remove_route:
+            if on_remove_route is not None:
                 app_service.remove_route_requested.connect(on_remove_route)
-            else:
-                try:
-                    app_service.remove_route_requested.connect(bridge.remove_route.emit)
-                except Exception:
-                    pass
-            if on_message_to_dock:
+            if on_message_to_dock is not None:
                 app_service.message_to_dock_requested.connect(on_message_to_dock)
             elif central_manager is not None and hasattr(central_manager, 'send_json_to_dock'):
-                try:
-                    app_service.message_to_dock_requested.connect(lambda name, data: central_manager.send_json_to_dock(name, data))
-                except Exception:
-                    pass
-            # 直接转发主窗口命令
-            try:
-                app_service.command_to_main_requested.connect(lambda name, data: bridge.command_to_main.emit(name, data))
-            except Exception:
-                pass
-
-            # 服务信号 -> 旧桥接信号（后端用），前端不再需要 pybridge
-            scene_service.actor_created.connect(lambda s: bridge.dock_event.emit("actorCreated", s))
-            scene_service.scene_loaded.connect(lambda s: bridge.dock_event.emit("sceneLoaded", s))
-            scene_service.scene_error.connect(lambda s: bridge.dock_event.emit("sceneError", s))
-            project_service.scene_saved.connect(lambda s: bridge.dock_event.emit("sceneSaved", s))
-            ai_service.ai_response.connect(bridge.ai_response.emit)
+                app_service.message_to_dock_requested.connect(lambda name, data: central_manager.send_json_to_dock(name, data))
+            if on_command_to_main is not None:
+                app_service.command_to_main_requested.connect(on_command_to_main)
 
             services = {
                 "sceneService": scene_service,
@@ -113,7 +84,7 @@ def setup_webchannel_for_view(
     except Exception:
         pass
 
-    return WebChannelContext(channel=channel, bridge=bridge, services=services)
+    return WebChannelContext(channel=channel, services=services)
 
 
 def teardown_webchannel_for_view(view: QWebEngineView, ctx: WebChannelContext) -> None:
