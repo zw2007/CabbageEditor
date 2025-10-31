@@ -35,11 +35,11 @@ def setup_webchannel_for_view(
 
     if register_services:
         try:
-            from .scene_service import SceneService
-            from .ai_service import AIService
-            from .scripting_service import ScriptingService
-            from .project_service import ProjectService
-            from .app_service import AppService
+            from Backend.services.scene import SceneService
+            from Backend.services.ai import AIService
+            from Backend.services.scripting import ScriptingService
+            from Backend.services.project import ProjectService
+            from Backend.services.app import AppService
 
             scene_service = SceneService(bridge.scene_manager, bridge)
             ai_service = AIService(bridge)
@@ -80,7 +80,7 @@ def setup_webchannel_for_view(
                     pass
             if on_message_to_dock:
                 app_service.message_to_dock_requested.connect(on_message_to_dock)
-            elif central_manager is not None:
+            elif central_manager is not None and hasattr(central_manager, 'send_json_to_dock'):
                 try:
                     app_service.message_to_dock_requested.connect(lambda name, data: central_manager.send_json_to_dock(name, data))
                 except Exception:
