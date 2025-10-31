@@ -22,7 +22,8 @@ def get_bridge(central_manager=None):
         instance = Bridge(central_manager)
         _bridge_singleton = instance
     else:
-        if central_manager is not None and getattr(_bridge_singleton, "central_manager", None) is None:
+        # 始终更新 central_manager 引用，避免 child 页面没有传导致 None
+        if central_manager is not None:
             _bridge_singleton.central_manager = central_manager
     return _bridge_singleton
 
@@ -53,12 +54,15 @@ class Bridge(QObject):
     remove_route = Signal(str)
     ai_response = Signal(str)
     dock_event = Signal(str, str)
-    command_to_main = Signal(str, str)
+    command_to_main = Signal(str, str)  # 前端页面通过 appService.send_command_to_main 发送，例如 input_event，BrowserWidget 注入到事件总线
     key_event = Signal(str)
+
+           
     script_dir = os.path.join(root_dir, "CabbageEditor", "Backend", "script")
     saves_dir = os.path.join(root_dir, "CabbageEditor", "saves")
     os.makedirs(script_dir, exist_ok=True)
     os.makedirs(saves_dir, exist_ok=True)
+
     obj_dir = ""
 
     def __init__(self, central_manager=None):
@@ -66,11 +70,22 @@ class Bridge(QObject):
         self.camera_position = [0.0, 5.0, 10.0]
         self.camera_forward = [0.0, 1.5, 0.0]
         self.central_manager = central_manager
+                 
         self.scene_manager = SceneManager()
         self._workers: set[WorkerThread] = set()
 
+                                  
     @Slot(str, str, str, str, str)
     def add_dock_widget(self, routename, routepath, position="left", floatposition="None", size=None):
+        app_service = getattr(self, "app_service", None)
+        if app_service is not None:
+            try:
+                size_str = size if isinstance(size, str) or size is None else json.dumps(size)
+                app_service.add_dock_widget(routename, routepath, position, floatposition, size_str)
+                return
+            except Exception as e:
+                print(f"[WARN] AppService.add_dock_widget 委托失败，回退旧路径: {e}")
+
         try:
             if isinstance(size, str):
                 size = json.loads(size)
@@ -80,189 +95,78 @@ class Bridge(QObject):
 
     @Slot(str)
     def remove_dock_widget(self, routename):
+        app_service = getattr(self, "app_service", None)
+        if app_service is not None:
+            try:
+                app_service.remove_dock_widget(routename)
+                return
+            except Exception as e:
+                print(f"[WARN] AppService.remove_dock_widget 委托失败，回退旧路径: {e}")
         self.remove_route.emit(routename)
 
     @Slot(str, str)
+    def send_message_to_dock(self, routename, json_data):
+        app_service = getattr(self, "app_service", None)
+        if app_service is not None:
+            try:
+                app_service.send_message_to_dock(routename, json_data)
+                return
+            except Exception as e:
+                print(f"[WARN] AppService.send_message_to_dock 委托失败，回退旧路径: {e}")
+        try:
+            self.central_manager.send_json_to_dock(routename, json_data)
+        except Exception as e:
+            print(f"发送消息失败: {str(e)}")
+
+
+    @Slot(str, str)
     def create_actor(self, scene_name, obj_path):
+        scene_service = getattr(self, "scene_service", None)
+        if scene_service is not None:
+            return scene_service.create_actor(scene_name, obj_path)
+
         scene = self.scene_manager.get_scene(scene_name)
         if not scene:
             print(f"场景 '{scene_name}' 不存在，无法创建角色")
             return
-        actor_data = scene.add_actor(obj_path)
-        print("角色创建成功:", actor_data["name"])
+        scene.add_actor(obj_path)
 
     @Slot(str)
     def create_scene(self, data):
-        scene_name = json.loads(data).get("sceneName")
+        scene_service = getattr(self, "scene_service", None)
+        if scene_service is not None:
+            return scene_service.create_scene(data)
+
+        try:
+            scene_name = json.loads(data).get("sceneName")
+        except Exception:
+            scene_name = None
         if not scene_name:
             print("场景名为空")
             return
         self.scene_manager.create_scene(scene_name)
-        print("场景创建成功:", scene_name)
-
-    @Slot(str, str)
-    def send_message_to_dock(self, routename, json_data):
-        try:
-            self.central_manager.send_json_to_dock(routename, json_data)
-        except json.JSONDecodeError:
-            print("发送消息失败：无效的JSON字符串")
-        except Exception as e:
-            print(f"发送消息失败: {str(e)}")
-
-    @Slot(str)
-    def send_message_to_ai(self, ai_message: str):
-        def ai_work() -> str:
-            try:
-                msg_data = json.loads(ai_message)
-                query = msg_data.get("message", "")
-                response_text = qa_one_sync(query=query)
-                final_response = {
-                    "type": "ai_response",
-                    "content": response_text,
-                    "status": "success",
-                    "timestamp": int(time.time()),
-                }
-                return json.dumps(final_response)
-            except Exception as e:
-                error_response = {
-                    "type": "error",
-                    "content": str(e),
-                    "status": "error",
-                    "timestamp": int(time.time()),
-                }
-                return json.dumps(error_response)
-
-        worker = WorkerThread(ai_work, parent=self)
-        worker.result_ready.connect(self.ai_response.emit)
-        worker.finished.connect(worker.deleteLater)
-        worker.finished.connect(lambda: self._workers.discard(worker))
-        self._workers.add(worker)
-        worker.start()
-
-    @Slot(str, str)
-    def open_file_dialog(self, sceneName, file_type="model"):
-        file_handler = FileHandler()
-        scene = self.scene_manager.get_scene(sceneName)
-        if not scene:
-            print(f"场景 {sceneName} 不存在，无法加载资源")
-            return
-
-        if file_type == "model":
-            _, file_path = file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
-            if file_path:
-                try:
-
-                    actor_data = scene.add_actor(file_path)
-                    response = {"name": actor_data["name"], "path": file_path}
-                    self.dock_event.emit("actorCreated", json.dumps(response))
-                except Exception as e:
-                    print(f"创建角色失败: {str(e)}")
-
-        elif file_type == "scene":
-            content, file_path = file_handler.open_file("选择场景文件", "场景文件 (*.json)")
-            if file_path and content:
-                try:
-                    scene_data = json.loads(content)
-                    actors = []
-
-                    for actor_name in list(scene.list_actor_names()):
-                        scene.remove_actor(actor_name)
-
-                    for actor in scene_data.get("actors", []):
-                        path = actor.get("path")
-                        if path:
-                            actor_data = scene.add_actor(path)
-                            actors.append({"name": actor_data["name"], "path": path})
-                    self.dock_event.emit("sceneLoaded", json.dumps({"actors": actors}))
-                except Exception as e:
-                    print(f"加载场景失败: {str(e)}")
-                    error_response = {"type": "error", "message": str(e)}
-                    self.dock_event.emit("sceneError", json.dumps(error_response))
-
-    @Slot(str, str)
-    def send_message_to_main(self, command_name, command_data):
-        try:
-            try:
-                self.command_to_main.emit(command_name, command_data)
-            except Exception:
-                pass
-            key_text = self._extract_key_text(command_name, command_data)
-            if key_text:
-                try:
-                    self.key_event.emit(key_text)
-                except Exception:
-                    pass
-        except Exception as e:
-            print(f"send_message_to_main failed: {str(e)}")
-
-    @staticmethod
-    def _extract_key_text(command_name, command_data):
-        try:
-            if not command_data:
-                return None
-            if not isinstance(command_data, str):
-                payload = command_data
-            else:
-                s = command_data.strip()
-                if not s:
-                    return None
-                try:
-                    payload = json.loads(s)
-                except Exception:
-                    return s
-            if isinstance(payload, dict):
-                for k in ('key', 'code', 'combo', 'text', 'name', 'key_text'):
-                    v = payload.get(k)
-                    if isinstance(v, str) and v.strip():
-                        return v.strip()
-                    if isinstance(v, list) and v:
-                        try:
-                            return '+'.join(map(str, v))
-                        except Exception:
-                            pass
-                if isinstance(payload.get('keys'), list) and payload.get('keys'):
-                    try:
-                        return '+'.join(map(str, payload.get('keys')))
-                    except Exception:
-                        pass
-                if isinstance(payload.get('comboKeys'), list) and payload.get('comboKeys'):
-                    try:
-                        return '+'.join(map(str, payload.get('comboKeys')))
-                    except Exception:
-                        pass
-                for container in ('event', 'data', 'payload', 'value', 'detail'):
-                    sub = payload.get(container)
-                    if isinstance(sub, dict):
-                        for k in ('key', 'code', 'combo', 'keys', 'comboKeys', 'text', 'name', 'key_text'):
-                            v = sub.get(k)
-                            if isinstance(v, str) and v.strip():
-                                return v.strip()
-                            if isinstance(v, list) and v:
-                                try:
-                                    return '+'.join(map(str, v))
-                                except Exception:
-                                    pass
-            if command_name and isinstance(command_name, str) and command_name.lower().startswith('key'):
-                return command_name
-        except Exception:
-            return None
-        return None
 
     @Slot(str, str)
     def remove_actor(self, sceneName, actorName):
+        scene_service = getattr(self, "scene_service", None)
+        if scene_service is not None:
+            return scene_service.remove_actor(sceneName, actorName)
+
         scene = self.scene_manager.get_scene(sceneName)
         if not scene:
             print(f"场景 '{sceneName}' 不存在，无法删除角色")
             return
-        actor = scene.get_actor(actorName)
-        if not actor:
+        if not scene.get_actor(actorName):
             print(f"角色 '{actorName}' 不存在，无法删除")
             return
         scene.remove_actor(actorName)
-        print(f"角色 '{actorName}' 已从场景 '{sceneName}' 中删除")
 
     @Slot(str)
     def actor_operation(self, data):
+        scene_service = getattr(self, "scene_service", None)
+        if scene_service is not None:
+            return scene_service.actor_operation(data)
+
         try:
             Actor_data = json.loads(data)
             sceneName = Actor_data.get("sceneName")
@@ -272,37 +176,25 @@ class Bridge(QObject):
 
             scene = self.scene_manager.get_scene(sceneName)
             if not scene:
-                print(f"场景 '{sceneName}' 不存在，无法操作角色")
                 return
-
             actor = scene.get_actor(actorName)
             if not actor:
-                print(f"角色 '{actorName}' 不存在，无法操作")
                 return
-
-            match Operation:
-                case "Scale":
-
-                    try:
-                        actor.scale([x, y, z])
-                    except Exception as e:
-                        print(f"Scale failed for actor '{actorName}': {e}")
-                case "Move":
-                    try:
-                        actor.move([x, y, z])
-                    except Exception as e:
-                        print(f"Move failed for actor '{actorName}': {e}")
-                case "Rotate":
-                    try:
-                        actor.rotate([x, y, z])
-                    except Exception as e:
-                        print(f"Rotate failed for actor '{actorName}': {e}")
-        except Exception as e:
-            print(f"Actor transform error: {str(e)}")
+            if Operation == "Scale":
+                actor.scale([x, y, z])
+            elif Operation == "Move":
+                actor.move([x, y, z])
+            elif Operation == "Rotate":
+                actor.rotate([x, y, z])
+        except Exception:
             return
 
     @Slot(str)
     def camera_move(self, data):
+        scene_service = getattr(self, "scene_service", None)
+        if scene_service is not None:
+            return scene_service.camera_move(data)
+               
         try:
             move_data = json.loads(data)
             sceneName = move_data.get("sceneName", "scene1")
@@ -312,14 +204,17 @@ class Bridge(QObject):
             fov = float(move_data.get("fov", 45.0))
             scene = self.scene_manager.get_scene(sceneName)
             if scene is None:
-                print(f"场景 '{sceneName}' 不存在，无法设置相机")
                 return
             scene.set_camera(position, forward, up, fov)
-        except Exception as e:
-            print(f"摄像头移动错误: {str(e)}")
+        except Exception:
+            return
 
     @Slot(str)
     def sun_direction(self, data):
+        scene_service = getattr(self, "scene_service", None)
+        if scene_service is not None:
+            return scene_service.sun_direction(data)
+
         try:
             sun_data = json.loads(data)
             sceneName = sun_data.get("sceneName", "scene1")
@@ -329,90 +224,84 @@ class Bridge(QObject):
             direction = [px, py, pz]
             scene = self.scene_manager.get_scene(sceneName)
             if scene is None:
-                print(f"场景 '{sceneName}' 不存在，无法设置太阳方向")
                 return
             scene.set_sun_direction(direction)
-        except Exception as e:
-            error_response = {"type": "error", "message": str(e)}
-            self.dock_event.emit("sunDirectionError", json.dumps(error_response))
+        except Exception:
+            return
 
-    @Slot(str, int)
-    def execute_python_code(self, code, index):
-        try:
-            filename = f"blockly_code.py"
-            filepath = os.path.join(self.script_dir, filename)
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(code)
+                                    
+    @Slot(str)
+    def send_message_to_ai(self, ai_message: str):
+        ai_service = getattr(self, "ai_service", None)
+        if ai_service is not None:
+            return ai_service.send_message_to_ai(ai_message)
 
-            run_script_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "runScript.py"
-            )
-            script_files = []
-            for f in os.listdir(self.script_dir):
-                if f.startswith("blockly_code") and f.endswith(".py"):
-                    script_files.append(f.replace(".py", ""))
-            run_script_content = ""
-            for script in script_files:
-                run_script_content += f"from Backend.script import {script}\n"
-
-            run_script_content += "\ndef run():\n"
-            for script in script_files:
-                run_script_content += f"    {script}.run()\n"
-
-            with open(run_script_path, "w", encoding="utf-8") as f:
-                f.write(run_script_content)
-            print(f"[DEBUG] 脚本文件创建成功: {filepath}")
-            print(f"[DEBUG] runScript.py创建/覆盖成功: {run_script_path}")
-
+        def ai_work() -> str:
             try:
-                for sf in script_files:
-                    sf_path = os.path.join(self.script_dir, f"{sf}.py")
-                    if os.path.exists(sf_path):
-                        with open(sf_path, 'r', encoding='utf-8') as sf_f:
-                            content = sf_f.read()
-                        new_content = content.replace('from utils.', 'from Backend.utils.').replace(
-                            'from corona_engine_fallback import', 'from Backend.corona_engine_fallback import')
-                        if new_content != content:
-                            with open(sf_path, 'w', encoding='utf-8') as sf_f:
-                                sf_f.write(new_content)
-            except Exception:
-                pass
-        except Exception as e:
-            print(f"[ERROR] 执行Python代码时出错: {str(e)}")
-            error_response = {
-                "status": "error",
-                "message": str(e),
-                "stacktrace": traceback.format_exc(),
-            }
-            self.dock_event.emit("scriptError", json.dumps(error_response))
+                msg_data = json.loads(ai_message)
+                query = msg_data.get("message", "")
+                response_text = qa_one_sync(query=query)
+                return json.dumps({"type": "ai_response", "content": response_text, "status": "success", "timestamp": int(time.time())})
+            except Exception as e:
+                return json.dumps({"type": "error", "content": str(e), "status": "error", "timestamp": int(time.time())})
+        worker = WorkerThread(ai_work, parent=self)
+        worker.result_ready.connect(self.ai_response.emit)
+        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(lambda: self._workers.discard(worker))
+        self._workers.add(worker)
+        worker.start()
+
+
+    @Slot(str, str)
+    def open_file_dialog(self, sceneName, file_type="model"):
+        project_service = getattr(self, "project_service", None)
+        if project_service is not None:
+            return project_service.open_file_dialog(sceneName, file_type)
+
+        file_handler = FileHandler()
+        scene = self.scene_manager.get_scene(sceneName)
+        if not scene:
+            print(f"场景 {sceneName} 不存在，无法加载资源")
+            return
+        if file_type == "model":
+            _, file_path = file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
+            if file_path:
+                try:
+                    actor_data = scene.add_actor(file_path)
+                    self.dock_event.emit("actorCreated", json.dumps({"name": actor_data["name"], "path": file_path}))
+                except Exception as e:
+                    print(f"创建角色失败: {str(e)}")
+        elif file_type == "scene":
+            content, file_path = file_handler.open_file("选择场景文件", "场景文件 (*.json)")
+            if file_path and content:
+                try:
+                    data = json.loads(content)
+                    for actor_name in list(scene.list_actor_names()):
+                        scene.remove_actor(actor_name)
+                    actors = []
+                    for actor in data.get("actors", []):
+                        path = actor.get("path")
+                        if path:
+                            actor_data = scene.add_actor(path)
+                            actors.append({"name": actor_data["name"], "path": path})
+                    self.dock_event.emit("sceneLoaded", json.dumps({"actors": actors}))
+                except Exception as e:
+                    self.dock_event.emit("sceneError", json.dumps({"type": "error", "message": str(e)}))
 
     @Slot(str)
     def scene_save(self, data):
+        project_service = getattr(self, "project_service", None)
+        if project_service is not None:
+            return project_service.scene_save(data)
+
         try:
             scene_data = json.loads(data)
             file_handler = FileHandler()
-
             content = json.dumps(scene_data, indent=4)
             save_path = file_handler.save_file(content, "保存场景文件", "场景文件 (*.json)")
             if save_path:
-                print(f"[DEBUG] 场景保存成功: {save_path}")
-                self.dock_event.emit(
-                    "sceneSaved", json.dumps({"status": "success", "filepath": save_path})
-                )
+                self.dock_event.emit("sceneSaved", json.dumps({"status": "success", "filepath": save_path}))
             else:
-                print("[DEBUG] 场景保存失败")
-                self.dock_event.emit(
-                    "sceneSaved", json.dumps({"status": "error", "filepath": save_path})
-                )
+                self.dock_event.emit("sceneSaved", json.dumps({"status": "error", "filepath": save_path}))
         except Exception as e:
             print(f"[ERROR] 保存场景失败: {str(e)}")
-
-    @Slot()
-    def close_process(self):
-        QApplication.quit()
-        os._exit(0)
-
-    @Slot(str, str)
-    def forward_dock_event(self, event_type, event_data):
-
-        self.dock_event.emit(event_type, event_data)
