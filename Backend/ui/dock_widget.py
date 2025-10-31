@@ -10,9 +10,7 @@ from ..utils.webchannel_helper import setup_webchannel_for_view, teardown_webcha
 class RouteDockWidget(QDockWidget):
     def __init__(self, browser, name: str, path: str, CentralManager, Main_Window, isFloat: bool):
         super(RouteDockWidget, self).__init__(name, Main_Window)
-        self.bridge = None
         self.round_corner_stylesheet = None
-        self.channel = None
         self.page = None
         self.Main_Window = Main_Window
         self.max_width = int(Main_Window.width() * 0.3)
@@ -24,6 +22,7 @@ class RouteDockWidget(QDockWidget):
         self.worker_threads = []
         self.profile = None
         self._webchannel_ctx = None
+        self.services = {}
 
         from PySide6.QtCore import QUrl
         from ..utils.static_components import url as base_url
@@ -108,27 +107,65 @@ class RouteDockWidget(QDockWidget):
         self.setStyleSheet(self.round_corner_stylesheet)
 
     def setup_web_channel(self) -> None:
-        # 通过 helper 注册 bridge，Dock 页面需要服务对象（如 scriptingService）
+        def _on_msg_to_dock(routename: str, json_data: str) -> None:
+            if routename == self.name:
+                self.send_message_to_dock(json_data)
+
+        def _on_create_route(routename: str, routepath: str, position: str, floatposition: str, size: object | None):
+            try:
+                creator = getattr(self.central_manager, '_creator', None)
+                if callable(creator):
+                    creator(routename, routepath, position, floatposition, size)
+                    return
+                # 兜底：直接调用主窗口的 BrowserWidget
+                bw = getattr(self.Main_Window, 'browser_widget', None)
+                if bw and hasattr(bw, 'AddDockWidget'):
+                    bw.AddDockWidget(routename, routepath, position, floatposition, size)
+                else:
+                    print('[WARN] 未找到 Dock 创建回流目标（CentralManager/browser_widget）')
+            except Exception as e:
+                print(f'[ERROR] _on_create_route 处理失败: {e}')
+
+        def _on_remove_route(routename: str):
+            try:
+                remover = getattr(self.central_manager, '_remover', None)
+                if callable(remover):
+                    remover(routename)
+                    return
+                bw = getattr(self.Main_Window, 'browser_widget', None)
+                if bw and hasattr(bw, 'RemoveDockWidget'):
+                    bw.RemoveDockWidget(routename)
+                else:
+                    self.central_manager.delete_dock(routename)
+            except Exception as e:
+                print(f'[ERROR] _on_remove_route 处理失败: {e}')
+
         self._webchannel_ctx = setup_webchannel_for_view(
             self.browser,
             self.central_manager,
             register_services=True,
+            on_create_route=_on_create_route,
+            on_remove_route=_on_remove_route,
+            on_message_to_dock=_on_msg_to_dock,
         )
-        self.channel = self._webchannel_ctx.channel
-        self.bridge = self._webchannel_ctx.bridge
+        self.services = getattr(self._webchannel_ctx, 'services', {}) or {}
 
         self.central_manager.register_dock(self.name, self)
 
     def connect_signals(self) -> None:
-        self.bridge.ai_response.connect(self.send_ai_message_to_js)
-        self.bridge.dock_event.connect(self.dock_event)
+        ai_service = self.services.get("aiService")
+        if ai_service is not None:
+            try:
+                ai_service.ai_response.connect(self.send_ai_message_to_js)
+            except Exception:
+                pass
+
         self.topLevelChanged.connect(self.handle_top_level_change)
         self.destroyed.connect(self.cleanup_resources)
 
     def dock_event(self, event_type: str, event_data: str) -> None:
         try:
             data_obj = json.loads(event_data) if isinstance(event_data, str) else (event_data or {})
-            # 新格式兼容：前端通过 appService.send_message_to_dock 发送 {event: '...', routename, ...}
             inner_event = data_obj.get("event")
             if inner_event:
                 event_type = inner_event
@@ -187,10 +224,10 @@ class RouteDockWidget(QDockWidget):
                 self.browser.update()
 
     def send_message_to_dock(self, json_data: str) -> None:
-        self.bridge.dock_event.emit("dockData", json_data)
+        self.dock_event("dockData", json_data)
 
     def send_message_to_main(self, json_data: str) -> None:
-        self.bridge.dock_event.emit("mainData", json_data)
+        pass
 
     def send_ai_message_to_js(self, message: str) -> None:
         try:
@@ -208,29 +245,16 @@ class RouteDockWidget(QDockWidget):
 
     def cleanup_resources(self) -> None:
         try:
-
-            try:
-                self.bridge.ai_response.disconnect(self.send_ai_message_to_js)
-            except Exception:
-                pass
-            try:
-                self.bridge.dock_event.disconnect(self.dock_event)
-            except Exception:
-                pass
-
             if getattr(self, "_webchannel_ctx", None):
                 teardown_webchannel_for_view(self.browser, self._webchannel_ctx)
                 self._webchannel_ctx = None
-
             if hasattr(self, "page") and self.page:
                 self.page.deleteLater()
                 self.page = None
-
             try:
                 self.central_manager.delete_dock(self.name)
             except Exception:
                 pass
-
             try:
                 if getattr(self, "profile", None) is not None:
                     try:
@@ -241,7 +265,6 @@ class RouteDockWidget(QDockWidget):
                     self.profile = None
             except Exception:
                 pass
-
             if hasattr(self, "browser"):
                 self.browser.deleteLater()
                 print(f"清理浏览器资源: {self.name}")

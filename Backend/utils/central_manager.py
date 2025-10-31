@@ -1,6 +1,8 @@
 class CentralManager:
     def __init__(self):
         self.docks = {}
+        self._creator = None
+        self._remover = None
 
     def register_dock(self, routename, dock):
         self.docks[routename] = dock
@@ -13,3 +15,9 @@ class CentralManager:
             self.docks[routename].send_message_to_dock(json_data)
         else:
             print(f"[ERROR] 未找到路由 {routename} 对应的 DockWidget")
+
+    def set_creator(self, creator):
+        self._creator = creator
+
+    def set_remover(self, remover):
+        self._remover = remover
