@@ -4,6 +4,7 @@ import importlib.util
 import glob
 import queue
 
+# 强制软件渲染，避免 GPU/Direct Composition 对 QtWebEngine 的兼容问题
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
 os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
 os.environ["QT_QUICK_BACKEND"] = "software"
@@ -14,11 +15,13 @@ _cleaned_up = False
 
 from Backend.ui import main_window
 
+# 初始化 Qt 应用与主窗口
 app, window = main_window.init_app()
 msg_queue = queue.Queue()
 
 
 def cleanup_blockly_files():
+    """删除上次运行残留的 blockly 脚本与入口文件，避免热更新时导入冲突。"""
     global _cleaned_up
     try:
         if _cleaned_up:
@@ -48,6 +51,7 @@ def cleanup_blockly_files():
 
 
 def run(isReload):
+    """按需清理残留，热重载时清理模块缓存后调用 runScript.run()。"""
     global _cleaned_up
     if not _cleaned_up:
         cleanup_blockly_files()
@@ -57,11 +61,15 @@ def run(isReload):
             if 'runScript' in module_name or 'script' in module_name:
                 del sys.modules[module_name]
         print("python hotfix")
+
     runscript_spec = importlib.util.find_spec("runScript")
     if runscript_spec is not None:
         runScript = importlib.util.module_from_spec(runscript_spec)
         runscript_spec.loader.exec_module(runScript)
-        runScript.run()
+        try:
+            runScript.run()
+        except Exception as e:
+            print(f"runScript.run 执行失败: {e}")
 
     if not msg_queue.empty():
         print(msg_queue.get())
@@ -75,10 +83,19 @@ def put_queue(msg):
 
 if __name__ == '__main__':
     cleanup_blockly_files()
-    while (True):
-        runscript_spec = importlib.util.find_spec("runScript")
-        if runscript_spec is not None:
-            runScript = importlib.util.module_from_spec(runscript_spec)
-            runscript_spec.loader.exec_module(runScript)
-            runScript.run()
-        app.processEvents()
+    while True:
+        try:
+            runscript_spec = importlib.util.find_spec("runScript")
+            if runscript_spec is not None:
+                runScript = importlib.util.module_from_spec(runscript_spec)
+                runscript_spec.loader.exec_module(runScript)
+                try:
+                    runScript.run()
+                except Exception as e:
+                    print(f"runScript.run 执行失败: {e}")
+            app.processEvents()
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            print(f"主循环异常: {e}")
+            app.processEvents()
