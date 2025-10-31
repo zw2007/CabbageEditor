@@ -4,7 +4,7 @@ export function useDragResize() {
 
     const isFloating = ref(false);
 
-    // 简易节流函数，默认 30ms 一次
+    // 简易节流函数，默认 20ms 一次
     const THROTTLE_MS = 20;
     const throttle = (fn, wait = THROTTLE_MS) => {
         let last = 0;
@@ -31,15 +31,17 @@ export function useDragResize() {
         };
     };
 
-    // 统一封装 bridge 调用，捕获 DOMException，避免刷屏
-    const safeForward = (type, payloadObj) => {
-        if (!window.pyBridge || typeof window.pyBridge.forward_dock_event !== 'function') return;
+    // 统一封装：通过 appService 发送到指定 routename 的 dock
+    const safeForward = (eventName, payloadObj) => {
+        const routename = window.__dockRouteName;
+        if (!routename) return;
+        const app = window.appService;
+        if (!app || typeof app.send_message_to_dock !== 'function') return;
         try {
-            const routename = window.__dockRouteName;
-            const payload = JSON.stringify({...payloadObj, routename});
-            window.pyBridge.forward_dock_event(type, payload);
+            const payload = JSON.stringify({ event: eventName, routename, ...payloadObj });
+            app.send_message_to_dock(routename, payload);
         } catch (err) {
-            console.warn('pyBridge.forward_dock_event error:', err);
+            console.warn('send_message_to_dock error:', err);
         }
     };
 
@@ -51,15 +53,15 @@ export function useDragResize() {
     });
 
     const resizeState = ref({
-    isResizing: false,
-    direction: '',
-    startWidth: 0,
-    startHeight: 0,
-    startX: 0,
-    startY: 0,
-    startDockX: 0,
-    startDockY: 0
-  });
+        isResizing: false,
+        direction: '',
+        startWidth: 0,
+        startHeight: 0,
+        startX: 0,
+        startY: 0,
+        startDockX: 0,
+        startDockY: 0
+    });
 
     // 节流后的拖拽事件发送
     const emitDragThrottled = throttle((deltaX, deltaY) => {
@@ -77,8 +79,6 @@ export function useDragResize() {
             isFloating.value = true;
             safeForward('float', {isFloating: true});
         }
-        // 移除无效的空 className 操作，避免 DOMException
-        // event.currentTarget.classList.add('dragging'); // 若需要样式，可解注释
         event.preventDefault();
     };
 
@@ -107,7 +107,6 @@ export function useDragResize() {
         dragState.value.startX = 0;
         dragState.value.startY = 0;
 
-        // event.currentTarget.classList.remove('dragging'); // 若添加了 dragging，则在此移除
         event.preventDefault();
     };
 
@@ -128,7 +127,7 @@ export function useDragResize() {
         const rect = event.currentTarget.parentElement.getBoundingClientRect();
         resizeState.value.startWidth = rect.width;
         resizeState.value.startHeight = rect.height;
-        // 关键修正：加上 screenX/Y 获取绝对屏幕坐标
+        // 使用屏幕绝对坐标
         resizeState.value.startDockX = rect.left + window.screenX;
         resizeState.value.startDockY = rect.top + window.screenY;
 
