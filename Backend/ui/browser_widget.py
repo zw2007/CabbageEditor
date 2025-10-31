@@ -2,11 +2,10 @@ import json
 
 from PySide6.QtCore import Qt, QPoint, QUrl
 from PySide6.QtGui import QColor, QGuiApplication
-from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .dock_widget import RouteDockWidget, DockCleanupWidget
-from ..utils.bridge import get_bridge
 from ..utils.central_manager import CentralManager
+from ..utils.webchannel_helper import setup_webchannel_for_view, teardown_webchannel_for_view
 
 
 def get_dock_area(position, floatposition, size):
@@ -49,6 +48,8 @@ class BrowserWidget(QWebEngineView):
         self.Main_Window = Main_Window
         self.central_manager = CentralManager()
 
+        self._webchannel_ctx = None
+
         self.url = QUrl(url) if isinstance(url, str) else url
 
         self.setMinimumSize(1, 1)
@@ -63,10 +64,17 @@ class BrowserWidget(QWebEngineView):
         self.connect_signals()
 
     def setup_web_channel(self):
-        self.channel = QWebChannel()
-        self.bridge = get_bridge(self.central_manager)
-        self.channel.registerObject("pybridge", self.bridge)
-        self.page().setWebChannel(self.channel)
+
+        self._webchannel_ctx = setup_webchannel_for_view(
+            self,
+            self.central_manager,
+            register_services=True,
+            on_create_route=self.AddDockWidget,
+            on_remove_route=self.RemoveDockWidget,
+            on_message_to_dock=lambda name, data: self.central_manager.send_json_to_dock(name, data),
+        )
+        self.channel = self._webchannel_ctx.channel
+        self.bridge = self._webchannel_ctx.bridge
 
     def connect_signals(self):
         self.bridge.create_route.connect(self.AddDockWidget)
@@ -123,7 +131,6 @@ class BrowserWidget(QWebEngineView):
 
     def closeEvent(self, event):
         try:
-
             try:
                 self.bridge.create_route.disconnect(self.AddDockWidget)
             except Exception:
@@ -137,18 +144,8 @@ class BrowserWidget(QWebEngineView):
             except Exception:
                 pass
 
-            try:
-                if hasattr(self, "channel") and self.channel:
-                    self.channel.deregisterObject(self.bridge)
-            except Exception:
-                pass
-            try:
-                if self.page():
-                    self.page().setWebChannel(None)
-            except Exception:
-                pass
-
-            if hasattr(self, "channel") and self.channel:
-                self.channel.deleteLater()
+            if getattr(self, "_webchannel_ctx", None):
+                teardown_webchannel_for_view(self, self._webchannel_ctx)
+                self._webchannel_ctx = None
         finally:
             super().closeEvent(event)

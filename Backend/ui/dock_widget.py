@@ -2,10 +2,9 @@ import json
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
-from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWidgets import QDockWidget, QWidget
-from ..utils.bridge import get_bridge
 from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngineSettings
+from ..utils.webchannel_helper import setup_webchannel_for_view, teardown_webchannel_for_view
 
 
 class RouteDockWidget(QDockWidget):
@@ -24,6 +23,7 @@ class RouteDockWidget(QDockWidget):
         self.name = name
         self.worker_threads = []
         self.profile = None
+        self._webchannel_ctx = None
 
         from PySide6.QtCore import QUrl
         from ..utils.static_components import url as base_url
@@ -108,14 +108,15 @@ class RouteDockWidget(QDockWidget):
         self.setStyleSheet(self.round_corner_stylesheet)
 
     def setup_web_channel(self) -> None:
-        self.channel = QWebChannel()
-        self.bridge = get_bridge(self.central_manager)
-        self.channel.registerObject("pybridge", self.bridge)
+        # 通过 helper 注册 bridge，Dock 页面需要服务对象（如 scriptingService）
+        self._webchannel_ctx = setup_webchannel_for_view(
+            self.browser,
+            self.central_manager,
+            register_services=True,
+        )
+        self.channel = self._webchannel_ctx.channel
+        self.bridge = self._webchannel_ctx.bridge
 
-        try:
-            self.browser.page().setWebChannel(self.channel)
-        except Exception:
-            pass
         self.central_manager.register_dock(self.name, self)
 
     def connect_signals(self) -> None:
@@ -127,6 +128,10 @@ class RouteDockWidget(QDockWidget):
     def dock_event(self, event_type: str, event_data: str) -> None:
         try:
             data_obj = json.loads(event_data) if isinstance(event_data, str) else (event_data or {})
+            # 新格式兼容：前端通过 appService.send_message_to_dock 发送 {event: '...', routename, ...}
+            inner_event = data_obj.get("event")
+            if inner_event:
+                event_type = inner_event
             target = data_obj.get("routename")
             if target is not None and target != self.name:
                 return
@@ -167,11 +172,11 @@ class RouteDockWidget(QDockWidget):
     def handle_top_level_change(self) -> None:
         if self.isFloating():
             self.setStyleSheet(self.round_corner_stylesheet)
-            self.setFeatures(
-                QDockWidget.DockWidgetFeature.DockWidgetFloatable
-                | QDockWidget.DockWidgetFeature.DockWidgetMovable
-                | QDockWidget.DockWidgetFeature.DockWidgetClosable
-            )
+            features = self.features()
+            features |= QDockWidget.DockWidgetFeature.DockWidgetFloatable
+            features |= QDockWidget.DockWidgetFeature.DockWidgetMovable
+            features |= QDockWidget.DockWidgetFeature.DockWidgetClosable
+            self.setFeatures(features)
             self.setMaximumWidth(16777215)
             self.setMinimumHeight(1)
         else:
@@ -213,18 +218,9 @@ class RouteDockWidget(QDockWidget):
             except Exception:
                 pass
 
-            try:
-                if hasattr(self, "channel") and self.channel:
-                    self.channel.deregisterObject(self.bridge)
-            except Exception:
-                pass
-            try:
-                if hasattr(self, "browser") and self.browser and self.browser.page():
-                    self.browser.page().setWebChannel(None)
-            except Exception:
-                pass
-            if hasattr(self, "channel") and self.channel:
-                self.channel.deleteLater()
+            if getattr(self, "_webchannel_ctx", None):
+                teardown_webchannel_for_view(self.browser, self._webchannel_ctx)
+                self._webchannel_ctx = None
 
             if hasattr(self, "page") and self.page:
                 self.page.deleteLater()
