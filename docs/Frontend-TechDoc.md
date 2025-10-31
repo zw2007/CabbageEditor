@@ -1,94 +1,126 @@
-# CabbageEditor 前端技术文档
+# CabbageEditor 前端技术文档（无 Bridge 版）
 
 ## 概述
-前端基于 Vue 3 + Vite + Tailwind（样式），通过 Qt WebChannel 与后端交互；页面在 Qt 的 QWebEngineView 中运行。通道初始化后，后端暴露的服务对象会挂载到 window：
-- window.appService
-- window.sceneService
-- window.projectService
-- window.scriptingService
-- window.aiService
+前端基于 Vue 3 + Vite（Tailwind 用于样式），运行在 Qt 的 QWebEngineView 中。
+通过 Qt WebChannel，后端将服务对象挂载到 window，供任意页面（包括 Dock 页面）直接调用。
 
-为保证时序，提供 window.webChannelReady（Promise）与 `qwebchannel-ready` 事件。
+暴露的服务对象（window.*）：
+- appService：创建/删除 Dock、向 Dock 发送消息、向主窗口发命令
+- sceneService：场景/Actor/相机/光源
+- projectService：项目/文件导入与保存
+- scriptingService：脚本生成与执行
+- aiService：AI 对话
 
-目录要点：
-- Frontend/index.html（qwebchannel.js 引入，使用相对路径）
-- Frontend/src/main.js（WebChannel 初始化与服务导出）
-- Frontend/src/composables/useDragResize.js（统一拖拽/缩放逻辑）
-- Frontend/src/views/{MainPage.vue, SceneBar.vue, Object.vue, AITalkBar.vue, Pet.vue}
-- Frontend/src/blockly/*（Blockly 定义与生成器）
+关键约定：
+- 在调用任何服务前，必须等待 `window.webChannelReady`。
+- 不再使用 pyBridge/bridge；所有交互统一通过服务对象进行。
 
-## 通道初始化（main.js）
-- 页面加载后检测 `QWebChannel` 与 `qt.webChannelTransport`，创建通道
-- 把 channel.objects 中的 service 对象挂到 window
-- 触发 window.webChannelReady 的 resolve，以及派发 `qwebchannel-ready` 事件
-- 不再暴露 pyBridge，所有调用走服务对象 API
-
-使用方式：
 ```js
-await window.webChannelReady
-window.appService.add_dock_widget("SceneBar", "/SceneBar?sceneName=scene1", "left", "None", JSON.stringify({width:520,height:640}))
+// 统一等待通道就绪
+await (window.webChannelReady || Promise.resolve());
 ```
 
-## Dock 拖拽/缩放（useDragResize.js）
-- 统一通过 appService.send_message_to_dock(routename, payload) 将事件发送到后端
-- 负载格式：`{ event: 'drag'|'resize'|'float'|'close', routename, ... }`
-- 节流：拖拽默认 20ms 一次；释放时补发一次终态
-- 关键字段：
-  - drag：deltaX, deltaY（仅在浮动模式生效）
-  - float：isFloating（自动切换浮动/停靠）
-  - resize：x, y, width, height（使用屏幕绝对坐标，修复上/左拉伸时的位移）
-- 页面加载完成后，后端会在 Dock 页注入 `window.__dockRouteName = <routename>`，该值作为发送目标标识
+## 创建/删除 Dock（主页面或任何 Dock 页面）
+- 创建：`window.appService.add_dock_widget(routename, routePath, position, floatposition, size)`
+  - routename：唯一 ID，如 "SceneBar"、"Object_<name>"
+  - routePath：形如 "/SceneBar?sceneName=scene1"、"/Object?sceneName=...&objectName=..."
+  - position："left" | "right" | "top" | "bottom" | "float"
+  - floatposition："top_left" | "top_right" | "bottom_left" | "bottom_right" | "center" | "None"
+  - size：推荐 JSON 字符串或对象，例如 `{width: 520, height: 640}` 或 `JSON.stringify({width:520,height:640})`
+- 删除：`window.appService.remove_dock_widget(routename)`
 
-使用示例（标题栏拖动）：
-```html
-<div class="titlebar" @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" />
+说明：
+- 在主页面调用会直接命中主窗口的 `AddDockWidget/RemoveDockWidget`。
+- 在 Dock 页面调用也可创建 Dock：后端会将创建/删除请求“回流”到主窗口，最终统一由主窗口创建或删除。
+
+示例：
+```js
+await window.webChannelReady;
+window.appService.add_dock_widget(
+  "SceneBar",
+  `/SceneBar?sceneName=${sceneName}`,
+  "left",
+  "None",
+  { width: 520, height: 640 }
+);
 ```
 
-## 视图与服务调用
-- MainPage.vue
-  - 创建场景：`sceneService.create_scene({sceneName})`
-  - 打开场景栏 Dock：`appService.add_dock_widget("SceneBar", "/SceneBar?sceneName=...", ...)`
-  - 相机移动：`sceneService.camera_move({sceneName, position, forward, up, fov})`
+## Dock 拖拽/缩放（useDragResize）
+- 事件统一发送到后端：`window.appService.send_message_to_dock(routename, jsonString)`
+- 标准事件负载（JSON，对应 RouteDockWidget.dock_event）：
+  - 通用字段：`{ event: 'drag'|'resize'|'float'|'close', routename }`
+  - drag：`{ deltaX, deltaY }`（仅浮动时生效）
+  - resize：`{ x, y, width, height }`（屏幕绝对坐标，处理上/左拉伸会移动+缩放）
+  - float：`{ isFloating: true|false }`
+- 节流建议：拖拽/缩放事件 20ms 发送一次；鼠标释放时补发一次“终态”。
+- 后端会在 Dock 页加载完成后注入 `window.__dockRouteName = <routename>`，可用作目标路由名。
 
-- SceneBar.vue
-  - 订阅 `sceneService.actor_created/scene_loaded` 更新 UI
-  - 导入模型/场景：`projectService.open_file_dialog(sceneName, 'model'|'scene')`
-  - 保存场景：`projectService.scene_save(JSON.stringify(sceneData))`
-  - 双击对象打开属性 Dock：`appService.add_dock_widget("Object_<name>", "/Object?sceneName=...&objectName=...&path=...&routename=...", 'right')`
-  - 删除对象：`sceneService.remove_actor(sceneName, actorName)` + `appService.remove_dock_widget(widgetName)`
+示例（伪代码）：
+```js
+const name = window.__dockRouteName;
+// 拖拽中（节流）
+window.appService.send_message_to_dock(
+  name,
+  JSON.stringify({ event: 'drag', routename: name, deltaX, deltaY })
+);
+// 切换浮动
+window.appService.send_message_to_dock(
+  name,
+  JSON.stringify({ event: 'float', routename: name, isFloating: true })
+);
+```
 
-- Object.vue
-  - Blockly 生成并执行脚本：`scriptingService.execute_python_code(code, 0)`
-  - 其余模型变换可扩展为 `sceneService.actor_operation`
+## 场景相关（Scene/Actor/相机/光源）
+- 创建场景：`window.sceneService.create_scene(JSON.stringify({ sceneName }))`
+- 创建 Actor：`window.sceneService.create_actor(sceneName, objPath)`
+- 删除 Actor：`window.sceneService.remove_actor(sceneName, actorName)`
+- Actor 变换：`window.sceneService.actor_operation(JSON.stringify({ sceneName, actorName, Operation: 'Move'|'Rotate'|'Scale', x,y,z }))`
+- 相机移动：`window.sceneService.camera_move(JSON.stringify({ sceneName, position, forward, up, fov }))`
+- 太阳方向：`window.sceneService.sun_direction(JSON.stringify({ sceneName, px, py, pz }))`
 
-- AITalkBar.vue
-  - 发送消息：`aiService.send_message_to_ai(JSON.stringify({message: '...' }))`
-  - 接收响应：RouteDockWidget 将 `ai_response` 转成 `window.receiveAIMessage(data)` 回调
+订阅：
+- `sceneService.actor_created` / `sceneService.scene_loaded`（通过 QWebChannel 信号 → Vue 里用 once/on 封装订阅，或在页面挂载时注册回调）
 
-- Pet.vue
-  - 双击呼出 AITalkBar：`appService.add_dock_widget("AITalkBar", "/AITalkBar", 'left', ...)`
-  - 标题/拖拽条接入 useDragResize，随鼠标移动 Dock
+## 脚本与 AI
+- 运行脚本：`window.scriptingService.execute_python_code(code, 0)`
+- AI 对话：`window.aiService.send_message_to_ai(JSON.stringify({ message: '...' }))`
+- AI 响应：后端会调用页面函数 `window.receiveAIMessage(data)`，需在对应 Dock 页里定义该函数以展示消息。
 
 ## 路由与资源
-- 路由采用 Hash 模式，主入口为 Frontend/dist/index.html
-- 各 Dock 页通过 fragment（hash）方式加载，例如 `/Object?sceneName=...`
-- index.html 使用相对路径引入 `qwebchannel.js`，保证 file:/// 以及打包后的可访问性
+- 路由使用 Hash 模式；后端通过 `routePath` 的 fragment（hash）加载对应页面。
+- index.html 引入 qwebchannel.js（相对路径），初始化完成后挂载 `window.webChannelReady`（Promise）。
 
-## 事件与信号对照
-- appService.add_dock_widget → 后端 BrowserWidget.AddDockWidget → 创建 Dock
-- appService.send_message_to_dock → 后端 RouteDockWidget.dock_event → 处理 drag/float/resize
-- sceneService.actor_created/scene_loaded → SceneBar 监听，更新 UI
-- aiService.ai_response → 通过 window.receiveAIMessage(...) 通知 AITalkBar
+最小初始化（概念示意）：
+```html
+<script src="./qwebchannel.js"></script>
+<script>
+  window.webChannelReady = new Promise((resolve) => {
+    function boot() {
+      if (typeof QWebChannel !== 'undefined' && typeof qt !== 'undefined' && qt.webChannelTransport) {
+        new QWebChannel(qt.webChannelTransport, (channel) => {
+          Object.assign(window, channel.objects); // 导出 appService/sceneService/...
+          resolve();
+        });
+      } else {
+        setTimeout(boot, 50);
+      }
+    }
+    boot();
+  });
+</script>
+```
 
-## 编码约定
-- 所有服务调用前 `await window.webChannelReady`
-- 发送到 Dock 的事件必须包含 `routename`
-- add_dock_widget 的 `size` 要传 JSON 字符串（例如 `JSON.stringify({width:520,height:640})`）
-- 组件卸载时记得移除事件监听（mousemove/mouseup/…）
+## 常见问题与排障
+- 看不到 window.appService：
+  - 检查 qwebchannel.js 是否加载；等待 `window.webChannelReady`；查看控制台是否有服务注册警告。
+- 调用 add_dock_widget 没反应：
+  - 确认 size 类型（对象或 JSON 字符串均可）；routename 是否唯一；若在 Dock 内调用，确保已出现“回流”日志（后端会打印回流相关 [DEBUG]/[WARN]）。
+- 拖拽不动/只在停靠模式移动：
+  - drag 仅对浮动窗口生效；先发送 float 事件或将 Dock 设为浮动。
+- 无法连接服务/信号：
+  - 统一等待 `window.webChannelReady`；检查对象名 `sceneService/appService/...` 是否存在。
 
-## 常见问题
-- QWebChannel 未连接：检查 index.html 是否加载 qwebchannel.js、main.js 是否 new QWebChannel
-- 拖拽不动：检查 window.__dockRouteName 是否注入、是否先切为浮动、前端是否通过 appService 发送
-- Object/SceneBar 打不开：确认 routename 唯一且 BrowserWidget 未拦截为“切换/关闭”行为（同名会先关）
-- AI 无响应：确保 aiService 可用、网络/qa_one_sync 可用；查看控制台是否有 JSON 格式错误
-
+## 实践建议
+- routename 保持唯一，如 "Object_<scene>_<name>"，避免“同名即关闭”的行为误判为“没创建”。
+- size 可传对象，后端会自动解析；若传字符串请用 JSON.stringify。
+- useDragResize 统一封装 drag/resize/float/close 事件发送，保持节流与释放补发。
