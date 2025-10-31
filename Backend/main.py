@@ -4,6 +4,7 @@ import importlib.util
 import glob
 import queue
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
 os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
 os.environ["QT_QUICK_BACKEND"] = "software"
