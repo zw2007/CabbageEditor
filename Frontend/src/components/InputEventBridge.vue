@@ -35,8 +35,8 @@ function isTypingTarget(target) {
 // 向 Python 端发送事件（通过 pyBridge）
 function sendToPython(commandName, payload) {
   try {
-    if (window.pyBridge) {
-      window.pyBridge.send_message_to_main(commandName, JSON.stringify(payload))
+    if (window.AppService) {
+      window.AppService.send_message_to_main(commandName, JSON.stringify(payload))
     }
   } catch (e) {
     // 通道未准备好时静默忽略
@@ -60,9 +60,9 @@ function baseEventFields(e) {
 function onKeyDown(e) {
   // 全局 ESC：通过 Python 桥接打开设置 Dock（浮动居中）
   if (props.enabled && (e.key === 'Escape' || e.code === 'Escape')) {
-    if (window.pyBridge && typeof window.pyBridge.add_dock_widget === 'function') {
+    if (window.AppService && typeof window.AppService.add_dock_widget === 'function') {
       // 注意：重复调用后端会切换 Dock（存在则关闭），这里直接调用，保持与后端行为一致
-      window.pyBridge.add_dock_widget('SetUp', '/SetUp', 'float', 'center')
+      window.AppService.add_dock_widget('SetUp', '/SetUp', 'float', 'center')
     }
   }
   // 普通键盘事件上报：避免打断输入框编辑

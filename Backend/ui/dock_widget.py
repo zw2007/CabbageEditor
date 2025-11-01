@@ -246,15 +246,6 @@ class RouteDockWidget(QDockWidget):
                 pass
         except Exception:
             self.profile = None
-        # NOTE: 延后加载到 setup_web_channel 之后，确保先设置 QWebChannel
-        # self.browser.load(self.url)
-
-        # NOTE: 延后注册 loadFinished 注入，保证在设置 WebChannel 后绑定
-        # try:
-        #     self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
-        #         "window.__dockRouteName = {};".format(json.dumps(name))))
-        # except Exception:
-        #     pass
 
         self.setWidget(self.browser)
 
