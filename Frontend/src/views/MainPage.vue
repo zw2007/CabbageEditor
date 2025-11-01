@@ -83,21 +83,15 @@
 import {ref, onMounted, onUnmounted, reactive, watch, nextTick} from 'vue';
 import {useRouter} from 'vue-router';
 
+async function waitWebChannel() {
+  if (window.appService || window.sceneService) return true;
+  if (window.webChannelReady) { try { await window.webChannelReady; } catch {} }
+  return !!(window.appService || window.sceneService);
+}
+
 const router = useRouter();
 
 const goToHome = () => {
-  if (window.pyBridge) {
-    tabs.value.forEach(tab => {
-      if (tab && tab.id) {
-        window.pyBridge.remove_dock_widget(tab.id);
-      }
-    });
-    window.pyBridge.remove_dock_widget("Pet");
-    window.pyBridge.remove_dock_widget("AITalkBar");
-    window.pyBridge.remove_dock_widget("Object");
-    window.pyBridge.remove_dock_widget("SceneBar");
-    window.pyBridge.remove_dock_widget("SetUp");
-  }
   router.push('/');
 };
 
@@ -250,27 +244,21 @@ const handleCameraMove = (direction) => {
       break;
   }
 
-  if (window.pyBridge) {
-    window.pyBridge.camera_move(JSON.stringify({
-      sceneName: tabs.value[activeTab.value]?.id || 'scene1',
-      position: [...position],
-      forward: [...forward],
-      up: [...cameraState.value.up],
-      fov: cameraState.value.fov
-    }));
+  const payload = JSON.stringify({
+    sceneName: tabs.value[activeTab.value]?.id || 'scene1',
+    position: [...position],
+    forward: [...forward],
+    up: [...cameraState.value.up],
+    fov: cameraState.value.fov
+  });
+  if (window.sceneService && typeof window.sceneService.camera_move === 'function') {
+    window.sceneService.camera_move(payload);
   }
 };
 
 // 关闭标签页
 const closeTab = (index) => {
   if (tabs.value.length > 1) {
-    const closedTab = tabs.value[index];
-    if (window.pyBridge) {
-      window.pyBridge.remove_dock_widget("AITalkBar");
-      window.pyBridge.remove_dock_widget("Object");
-      window.pyBridge.remove_dock_widget("SceneBar");
-    }
-
     tabs.value.splice(index, 1);
     if (activeTab.value >= index) {
       activeTab.value = Math.max(0, activeTab.value - 1);
@@ -284,49 +272,42 @@ const switchTab = (index) => {
 };
 
 const handleReturnToWelcome = () => {
-  if (window.pyBridge) {
-    window.pyBridge.removeAllDockWidgets();
-  }
   router.push('/');
 };
 
 // 控制包菜精显示
-const cabbagetalk = () => {
+const cabbagetalk = async () => {
   const size = {width: 160, height: 160};
-  if (window.pyBridge) {
-    window.pyBridge.add_dock_widget("Pet", "/Pet", "float", "bottom_right", JSON.stringify(size));
+  await waitWebChannel();
+  if (window.appService && typeof window.appService.add_dock_widget === 'function') {
+    window.appService.add_dock_widget("Pet", "/Pet", "float", "bottom_right", JSON.stringify(size));
   }
 };
 
-// 打开场景设置栏
-const openSceneBar = (index) => {
-  if (window.pyBridge) {
-    const sceneName = tabs.value[index]?.id || 'scene1';
-    window.pyBridge.add_dock_widget("SceneBar", `/SceneBar?sceneName=${sceneName}`, "left");
+const openSceneBar = async (index) => {
+  await waitWebChannel();
+  const sceneName = tabs.value[index]?.id || 'scene1';
+  const routePath = `/SceneBar?sceneName=${sceneName}`;
+  if (window.appService && typeof window.appService.add_dock_widget === 'function') {
+    window.appService.add_dock_widget("SceneBar", routePath, "left", "None", JSON.stringify({width: 520, height: 640}));
   }
 };
 
-const Out = () => {
-  if (window.pyBridge) {
-    window.pyBridge.close_process();
-  } else {
-    console.error("Python SendMessageToDock 未连接！");
-  }
-}
-
-const createScene = () => {
-  if (window.pyBridge) {
-    window.pyBridge.create_scene(JSON.stringify({sceneName: "scene1"}));
+const createScene = async () => {
+  await waitWebChannel();
+  const payload = JSON.stringify({sceneName: tabs.value[activeTab.value]?.id || 'scene1'});
+  if (window.sceneService && typeof window.sceneService.create_scene === 'function') {
+    window.sceneService.create_scene(payload);
   }
 };
 
-onMounted(() => {
-  createScene();
-  cabbagetalk();
+onMounted(async () => {
+  await waitWebChannel();
+  await createScene();
+  await cabbagetalk();
   document.addEventListener('keydown', handleKeyDown);
 });
 
-// 在onUnmounted中移除事件监听
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown);
 });

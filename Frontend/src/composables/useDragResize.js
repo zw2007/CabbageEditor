@@ -4,8 +4,8 @@ export function useDragResize() {
 
     const isFloating = ref(false);
 
-    // 简易节流函数，默认 30ms 一次
-    const THROTTLE_MS = 20;
+    // 简易节流函数，默认 20ms 一次
+    const THROTTLE_MS = 1000/60;
     const throttle = (fn, wait = THROTTLE_MS) => {
         let last = 0;
         let timer = null;
@@ -31,15 +31,17 @@ export function useDragResize() {
         };
     };
 
-    // 统一封装 bridge 调用，捕获 DOMException，避免刷屏
-    const safeForward = (type, payloadObj) => {
-        if (!window.pyBridge || typeof window.pyBridge.forward_dock_event !== 'function') return;
+    // 统一封装：通过 appService 发送到指定 routename 的 dock（旧路径，保留兼容）
+    const safeForward = (eventName, payloadObj) => {
+        const routename = window.__dockRouteName;
+        if (!routename) return;
+        const app = window.appService;
+        if (!app || typeof app.send_message_to_dock !== 'function') return;
         try {
-            const routename = window.__dockRouteName;
-            const payload = JSON.stringify({...payloadObj, routename});
-            window.pyBridge.forward_dock_event(type, payload);
+            const payload = JSON.stringify({ event: eventName, routename, ...payloadObj });
+            app.send_message_to_dock(routename, payload);
         } catch (err) {
-            console.warn('pyBridge.forward_dock_event error:', err);
+            console.warn('send_message_to_dock error:', err);
         }
     };
 
@@ -51,17 +53,26 @@ export function useDragResize() {
     });
 
     const resizeState = ref({
-    isResizing: false,
-    direction: '',
-    startWidth: 0,
-    startHeight: 0,
-    startX: 0,
-    startY: 0,
-    startDockX: 0,
-    startDockY: 0
-  });
+        isResizing: false,
+        direction: '',
+        startWidth: 0,
+        startHeight: 0,
+        startX: 0,
+        startY: 0,
+        startDockX: 0,
+        startDockY: 0
+    });
 
-    // 节流后的拖拽事件发送
+    // 节流后的拖拽事件（dockBridge 路径）
+    const sendDragMoveViaBridge = throttle((x, y) => {
+        try {
+            if (window.dockBridge && typeof window.dockBridge.drag_move === 'function') {
+                window.dockBridge.drag_move(Math.floor(x), Math.floor(y));
+            }
+        } catch (e) { /* ignore */ }
+    });
+
+    // 节流后的拖拽事件（旧路径）
     const emitDragThrottled = throttle((deltaX, deltaY) => {
         safeForward('drag', {deltaX, deltaY});
     });
@@ -72,51 +83,51 @@ export function useDragResize() {
         dragState.value.startX = event.clientX;
         dragState.value.startY = event.clientY;
 
-        // 拖动标题栏时自动变成浮动状态
-        if (!isFloating.value) {
-            isFloating.value = true;
-            safeForward('float', {isFloating: true});
+        // 优先使用 dockBridge：自动设为浮动并展示停靠预览区
+        if (window.dockBridge && typeof window.dockBridge.start_drag === 'function') {
+            try {
+                window.dockBridge.start_drag(Math.floor(event.clientX), Math.floor(event.clientY));
+            } catch (e) { /* ignore */ }
+        } else {
+            // 兼容旧路径：变成浮动 + 走 delta 拖拽
+            if (!isFloating.value) {
+                isFloating.value = true;
+                safeForward('float', {isFloating: true});
+            }
         }
-        // 移除无效的空 className 操作，避免 DOMException
-        // event.currentTarget.classList.add('dragging'); // 若需要样式，可解注释
         event.preventDefault();
     };
 
     const onDrag = (event) => {
         if (!dragState.value.isDragging) return;
 
-        const deltaX = event.clientX - dragState.value.startX;
-        const deltaY = event.clientY - dragState.value.startY;
-
-        // 拖拽过程中发送，使用节流
-        emitDragThrottled(deltaX, deltaY);
-
+        if (window.dockBridge && typeof window.dockBridge.drag_move === 'function') {
+            sendDragMoveViaBridge(event.clientX, event.clientY);
+        } else {
+            const deltaX = event.clientX - dragState.value.startX;
+            const deltaY = event.clientY - dragState.value.startY;
+            emitDragThrottled(deltaX, deltaY);
+        }
         event.preventDefault();
     };
 
     const stopDrag = (event) => {
         if (!dragState.value.isDragging) return;
 
-        const deltaX = event.clientX - dragState.value.startX;
-        const deltaY = event.clientY - dragState.value.startY;
-
-        // 结束时再补发一次，确保最终位置一致
-        safeForward('drag', {deltaX, deltaY});
+        if (window.dockBridge && typeof window.dockBridge.end_drag === 'function') {
+            try { window.dockBridge.end_drag(); } catch (e) { /* ignore */ }
+        } else {
+            const deltaX = event.clientX - dragState.value.startX;
+            const deltaY = event.clientY - dragState.value.startY;
+            // 结束时再补发一次，确保最终位置一致
+            safeForward('drag', {deltaX, deltaY});
+        }
 
         dragState.value.isDragging = false;
         dragState.value.startX = 0;
         dragState.value.startY = 0;
 
-        // event.currentTarget.classList.remove('dragging'); // 若添加了 dragging，则在此移除
         event.preventDefault();
-    };
-
-    // 双击处理逻辑
-    const handleDoubleClick = () => {
-        if (isFloating.value) {
-            isFloating.value = false;
-            safeForward('float', {isFloating: false});
-        }
     };
 
     const startResize = (event, direction) => {
@@ -128,54 +139,74 @@ export function useDragResize() {
         const rect = event.currentTarget.parentElement.getBoundingClientRect();
         resizeState.value.startWidth = rect.width;
         resizeState.value.startHeight = rect.height;
-        // 关键修正：加上 screenX/Y 获取绝对屏幕坐标
+        // 使用屏幕绝对坐标
         resizeState.value.startDockX = rect.left + window.screenX;
         resizeState.value.startDockY = rect.top + window.screenY;
 
         resizeState.value.startX = event.clientX;
         resizeState.value.startY = event.clientY;
 
+        // 优先走 dockBridge
+        if (window.dockBridge && typeof window.dockBridge.start_resize === 'function') {
+            try { window.dockBridge.start_resize(direction, Math.floor(event.clientX), Math.floor(event.clientY)); } catch (e) {}
+        }
+
         event.preventDefault();
     };
+
+    const sendResizeMoveViaBridge = throttle((x, y) => {
+        try {
+            if (window.dockBridge && typeof window.dockBridge.resize_move === 'function') {
+                window.dockBridge.resize_move(Math.floor(x), Math.floor(y));
+            }
+        } catch (e) {}
+    });
 
     const onResize = (event) => {
         if (!resizeState.value.isResizing) return;
 
-        const deltaX = event.clientX - resizeState.value.startX;
-        const deltaY = event.clientY - resizeState.value.startY;
+        if (window.dockBridge && typeof window.dockBridge.resize_move === 'function') {
+            sendResizeMoveViaBridge(event.clientX, event.clientY);
+        } else {
+            const deltaX = event.clientX - resizeState.value.startX;
+            const deltaY = event.clientY - resizeState.value.startY;
 
-        let newX = resizeState.value.startDockX;
-        let newY = resizeState.value.startDockY;
-        let newWidth = resizeState.value.startWidth;
-        let newHeight = resizeState.value.startHeight;
+            let newX = resizeState.value.startDockX;
+            let newY = resizeState.value.startDockY;
+            let newWidth = resizeState.value.startWidth;
+            let newHeight = resizeState.value.startHeight;
 
-        const direction = resizeState.value.direction;
+            const direction = resizeState.value.direction;
 
-        if (direction.includes('n')) {
-            newY = resizeState.value.startDockY + deltaY;
-            newHeight = resizeState.value.startHeight - deltaY;
-        }
-        if (direction.includes('s')) {
-            newHeight = resizeState.value.startHeight + deltaY;
-        }
-        if (direction.includes('w')) {
-            newX = resizeState.value.startDockX + deltaX;
-            newWidth = resizeState.value.startWidth - deltaX;
-        }
-        if (direction.includes('e')) {
-            newWidth = resizeState.value.startWidth + deltaX;
-        }
+            if (direction.includes('n')) {
+                newY = resizeState.value.startDockY + deltaY;
+                newHeight = resizeState.value.startHeight - deltaY;
+            }
+            if (direction.includes('s')) {
+                newHeight = resizeState.value.startHeight + deltaY;
+            }
+            if (direction.includes('w')) {
+                newX = resizeState.value.startDockX + deltaX;
+                newWidth = resizeState.value.startWidth - deltaX;
+            }
+            if (direction.includes('e')) {
+                newWidth = resizeState.value.startWidth + deltaX;
+            }
 
-        safeForward('resize', {
-            x: newX,
-            y: newY,
-            width: newWidth,
-            height: newHeight
-        });
+            safeForward('resize', {
+                x: newX,
+                y: newY,
+                width: newWidth,
+                height: newHeight
+            });
+        }
         event.preventDefault();
     };
 
     const stopResize = () => {
+        if (window.dockBridge && typeof window.dockBridge.end_resize === 'function') {
+            try { window.dockBridge.end_resize(); } catch (e) {}
+        }
         resizeState.value.isResizing = false;
     };
 
@@ -188,7 +219,6 @@ export function useDragResize() {
         onDrag,
         stopResize,
         onResize,
-        handleDoubleClick,
         isFloating
     };
 }

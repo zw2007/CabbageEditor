@@ -2,11 +2,10 @@ import json
 
 from PySide6.QtCore import Qt, QPoint, QUrl
 from PySide6.QtGui import QColor, QGuiApplication
-from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .dock_widget import RouteDockWidget, DockCleanupWidget
-from ..utils.bridge import get_bridge
 from ..utils.central_manager import CentralManager
+from ..utils.webchannel_helper import setup_webchannel_for_view, teardown_webchannel_for_view
 
 
 def get_dock_area(position, floatposition, size):
@@ -44,10 +43,16 @@ def get_dock_area(position, floatposition, size):
 class BrowserWidget(QWebEngineView):
     def __init__(self, Main_Window, url: QUrl):
         super(BrowserWidget, self).__init__(Main_Window)
-        self.bridge = None
-        self.channel = None
+        # 不再使用 bridge/channel
         self.Main_Window = Main_Window
         self.central_manager = CentralManager()
+
+        if hasattr(self.central_manager, "set_creator"):
+            self.central_manager.set_creator(self.AddDockWidget)
+        if hasattr(self.central_manager, "set_remover"):
+            self.central_manager.set_remover(self.RemoveDockWidget)
+
+        self._webchannel_ctx = None
 
         self.url = QUrl(url) if isinstance(url, str) else url
 
@@ -60,18 +65,18 @@ class BrowserWidget(QWebEngineView):
         self.setContentsMargins(0, 0, 0, 0)
 
         self.setup_web_channel()
-        self.connect_signals()
 
     def setup_web_channel(self):
-        self.channel = QWebChannel()
-        self.bridge = get_bridge(self.central_manager)
-        self.channel.registerObject("pybridge", self.bridge)
-        self.page().setWebChannel(self.channel)
-
-    def connect_signals(self):
-        self.bridge.create_route.connect(self.AddDockWidget)
-        self.bridge.remove_route.connect(self.RemoveDockWidget)
-        self.bridge.command_to_main.connect(self.handle_command_to_main)
+        # 通过回调直接接 appService 信号
+        self._webchannel_ctx = setup_webchannel_for_view(
+            self,
+            self.central_manager,
+            register_services=True,
+            on_create_route=self.AddDockWidget,
+            on_remove_route=self.RemoveDockWidget,
+            on_message_to_dock=lambda name, data: self.central_manager.send_json_to_dock(name, data),
+            on_command_to_main=self.handle_command_to_main,
+        )
 
     def AddDockWidget(self, routename, routepath, position, floatposition, size):
         if not routename or not routepath:
@@ -124,31 +129,8 @@ class BrowserWidget(QWebEngineView):
     def closeEvent(self, event):
         try:
 
-            try:
-                self.bridge.create_route.disconnect(self.AddDockWidget)
-            except Exception:
-                pass
-            try:
-                self.bridge.remove_route.disconnect(self.RemoveDockWidget)
-            except Exception:
-                pass
-            try:
-                self.bridge.command_to_main.disconnect(self.handle_command_to_main)
-            except Exception:
-                pass
-
-            try:
-                if hasattr(self, "channel") and self.channel:
-                    self.channel.deregisterObject(self.bridge)
-            except Exception:
-                pass
-            try:
-                if self.page():
-                    self.page().setWebChannel(None)
-            except Exception:
-                pass
-
-            if hasattr(self, "channel") and self.channel:
-                self.channel.deleteLater()
+            if getattr(self, "_webchannel_ctx", None):
+                teardown_webchannel_for_view(self, self._webchannel_ctx)
+                self._webchannel_ctx = None
         finally:
             super().closeEvent(event)

@@ -1,20 +1,6 @@
 <template>
   <div class="border-2 border-[#84a65b] rounded-md relative">
-    <!-- 标题栏 -->
-    <div
-        class="border-t-2 border-r-2 border-l-2 border-gray-950 titlebar fixed top-0 left-0 right-0 flex items-center w-full p-2 justify-between bg-[#84A65B] cursor-move select-none z-50"
-        @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
-        @dblclick="handleDoubleClick">
-      <div class="text-white font-medium w-auto whitespace-nowrap">助手</div>
-      <!-- 按钮组 -->
-      <div class="flex w-full space-x-2 justify-end">
-        <button @click.stop="closeFloat"
-                class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          ×
-        </button>
-      </div>
-    </div>
-
+    <DockTitleBar title="助手" extraClass="bg-[#84A65B]" @close="closeFloat" />
     <!-- 四周拖动边框 -->
     <div class="absolute top-0 left-0 w-full h-2 cursor-n-resize z-40" @mousedown="(e) => startResize(e, 'n')"></div>
     <div class="absolute bottom-0 left-0 w-full h-2 cursor-s-resize z-40" @mousedown="(e) => startResize(e, 's')"></div>
@@ -68,20 +54,32 @@
 <script setup>
 import {ref, inject, onMounted, onUnmounted} from 'vue';
 import {useDragResize} from '@/composables/useDragResize';
+import DockTitleBar from '@/components/DockTitleBar.vue'
 
-const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
+const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 
 const messages = ref([
   {sender: "AI", text: "你好！我是 AI。"},
 ]);
 const userInput = ref('');
 
-const SendMessageToAI = (query) => {
-  if (window.pyBridge) {
-    const testStr = JSON.stringify({message: query});
-    window.pyBridge.send_message_to_ai(testStr);
+async function waitWebChannel() {
+  if (window.pyBridge || window.aiService || window.appService) return true;
+  if (window.webChannelReady) {
+    try { await window.webChannelReady; } catch {}
+  }
+  return !!(window.pyBridge || window.aiService || window.appService);
+}
+
+const SendMessageToAI = async (query) => {
+  await waitWebChannel();
+  const payload = JSON.stringify({message: query});
+  if (window.aiService && typeof window.aiService.send_message_to_ai === 'function') {
+    window.aiService.send_message_to_ai(payload);
+  } else if (window.pyBridge && typeof window.pyBridge.send_message_to_ai === 'function') {
+    window.pyBridge.send_message_to_ai(payload);
   } else {
-    console.error("Python SendMessageToDock 未连接！");
+    console.error("未发现 AI 通道 (aiService/pyBridge)");
   }
 };
 
@@ -122,23 +120,17 @@ window.receiveAIMessage = (data) => {
 };
 
 //关闭浮动窗口
-const closeFloat = () => {
-  if (window.pyBridge) {
+const closeFloat = async () => {
+  await waitWebChannel();
+  if (window.appService && typeof window.appService.remove_dock_widget === 'function') {
+    window.appService.remove_dock_widget("AITalkBar");
+  } else if (window.pyBridge && typeof window.pyBridge.remove_dock_widget === 'function') {
     window.pyBridge.remove_dock_widget("AITalkBar");
-  }
-};
-/*
-// 双击事件处理
-const handleDoubleClick = () => {
-  if (window.pyBridge) {
-    window.pyBridge.forwardDockEvent('open', JSON.stringify({
-      widgetId: "AITalkBar"
-    }));
   } else {
-    console.error("Python SendMessageToDock 未连接！");
+    console.error("未发现 Dock 控制通道 (appService/pyBridge)");
   }
 };
-*/
+
 const handleResizeMove = (e) => {
   if (dragState.value.isResizing) onResize(e);
 };
@@ -158,14 +150,17 @@ const handleDockEvent = (eventType, eventData) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await waitWebChannel();
   document.addEventListener('mousemove', handleResizeMove);
   document.addEventListener('mouseup', handleResizeUp);
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
   document.addEventListener('mousemove', onResize);
   document.addEventListener('mouseup', stopResize);
-  window.pyBridge.dock_event.connect(handleDockEvent);
+  if (window.pyBridge && window.pyBridge.dock_event) {
+    try { window.pyBridge.dock_event.connect(handleDockEvent); } catch {}
+  }
 });
 
 onUnmounted(() => {
@@ -175,6 +170,8 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', stopDrag);
   document.removeEventListener('mousemove', onResize);
   document.removeEventListener('mouseup', stopResize);
-  window.pyBridge.dock_event.disconnect(handleDockEvent);
+  if (window.pyBridge && window.pyBridge.dock_event) {
+    try { window.pyBridge.dock_event.disconnect(handleDockEvent); } catch {}
+  }
 });
 </script>

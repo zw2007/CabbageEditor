@@ -1,16 +1,6 @@
 <template>
   <div class=" border-2 border-[#84a65b] rounded-md relative">
-    <div class="titlebar flex items-center w-full p-2 justify-between bg-[#84A65B] cursor-move select-none"
-         @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
-         @dblclick="handleDoubleClick">
-      <div class="text-white font-medium w-auto whitespace-nowrap">模型属性</div>
-      <div class="flex w-full space-x-2 justify-end">
-        <button @click.stop="CloseFloat"
-                class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          ×
-        </button>
-      </div>
-    </div>
+    <DockTitleBar title="模型属性" extraClass="bg-[#84A65B] rounded-t-md" @close="CloseFloat" />
     <div class="w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 56px);">
       <div class="p-2 border-b border-gray-400">
         <div class="flex items-center space-x-2">
@@ -170,8 +160,17 @@ import * as Blockly from 'blockly/core';
 import * as CN from 'blockly/msg/zh-hans';
 import {pythonGenerator} from 'blockly/python';
 import {useDragResize} from '@/composables/useDragResize';
+import DockTitleBar from '@/components/DockTitleBar.vue'
 
-const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
+async function waitWebChannel() {
+  if (window.pyBridge || window.sceneService || window.appService || window.scriptingService) return true;
+  if (window.webChannelReady) {
+    try { await window.webChannelReady; } catch {}
+  }
+  return !!(window.pyBridge || window.sceneService || window.appService || window.scriptingService);
+}
+
+const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 const workspace = ref(null);
 const character = ref('');
 const px = ref('0.0'), py = ref('0.0'), pz = ref('0.0');
@@ -363,8 +362,13 @@ const initBlockly = () => {
       callback: async () => {
         const code = pythonGenerator.workspaceToCode(workspace.value);
         console.log(code);
-        if (window.pyBridge) {
-          window.pyBridge.execute_python_code(code, actorname.value);
+        await waitWebChannel();
+        if (window.scriptingService && typeof window.scriptingService.execute_python_code === 'function') {
+          window.scriptingService.execute_python_code(code, 0);
+        } else if (window.pyBridge && typeof window.pyBridge.execute_python_code === 'function') {
+          window.pyBridge.execute_python_code(code, 0);
+        } else {
+          console.error('未发现脚本执行通道 (scriptingService/pyBridge)');
         }
       },
       scopeType: Blockly.ContextMenuRegistry.ScopeType.WORKSPACE,

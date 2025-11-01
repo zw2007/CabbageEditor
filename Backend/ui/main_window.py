@@ -4,12 +4,21 @@ import sys
 from PySide6.QtCore import Qt, QPoint, QEvent
 from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import QMainWindow, QApplication, QDockWidget
+from PySide6.QtWidgets import QMainWindow, QApplication, QDockWidget, QWidget
 from .browser_widget import BrowserWidget
 from .custom_window import CustomWindow
 from .render_widget import RenderWidget
 from ..utils.static_components import url
-from typing import Optional
+
+# 兼容常量（避免某些静态分析器无法解析 Qt 枚举名）
+NO_DOCK = getattr(Qt, 'NoDockWidgetArea', 0)
+TOP = getattr(Qt, 'TopDockWidgetArea', 0x1)
+BOTTOM = getattr(Qt, 'BottomDockWidgetArea', 0x2)
+LEFT = getattr(Qt, 'LeftDockWidgetArea', 0x4)
+RIGHT = getattr(Qt, 'RightDockWidgetArea', 0x8)
+HORIZONTAL = getattr(Qt, 'Horizontal', 0x1)
+VERTICAL = getattr(Qt, 'Vertical', 0x2)
+WA_TRANSPARENT = getattr(Qt, 'WA_TransparentForMouseEvents', 0)
 
 
 def configure_web_engine() -> None:
@@ -34,6 +43,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CoronaEngine")
         configure_web_engine()
 
+        # 仅负责界面布局，不再承载停靠逻辑
         self.render_widget = RenderWidget(self)
         self.setCentralWidget(self.render_widget)
 
@@ -46,25 +56,28 @@ class MainWindow(QMainWindow):
 
         self.osd.show()
 
+    # ---- 原有事件转发/窗口管理 ----
     def changeEvent(self, event) -> None:
         if event.type() == QEvent.Type.WindowStateChange:
             if self.windowState() == Qt.WindowState.WindowMinimized:
                 if self.osd:
                     self.osd.hide()
-            elif (self.windowState() in (Qt.WindowState.WindowNoState, Qt.WindowState.WindowMaximized) and
-                  event.oldState() == Qt.WindowState.WindowMinimized):
-                if self.osd:
-                    p = self.mapToGlobal(QPoint(0, 0))
-                    self.osd.move(p.x(), p.y())
-                    self.osd.show()
-        super().changeEvent(event)
+            else:
+                old_state = getattr(event, 'oldState', lambda: None)()
+                if (self.windowState() in (Qt.WindowState.WindowNoState, Qt.WindowState.WindowMaximized)
+                        and old_state == Qt.WindowState.WindowMinimized):
+                    if self.osd:
+                        p = self.mapToGlobal(QPoint(0, 0))
+                        self.osd.move(p.x(), p.y())
+                        self.osd.show()
+        super(MainWindow, self).changeEvent(event)
 
     def moveEvent(self, event) -> None:
         x = int(event.pos().x() - event.oldPos().x())
         y = int(event.pos().y() - event.oldPos().y())
         if self.osd:
             self.osd.move(self.osd.pos().x() + x, self.osd.pos().y() + y)
-        super().moveEvent(event)
+        super(MainWindow, self).moveEvent(event)
 
     def reloadWidget(self) -> None:
 
@@ -89,11 +102,11 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:
         if getattr(self, "osd", None) is not None:
             self.osd.resize(self.size())
-        super().resizeEvent(event)
+        super(MainWindow, self).resizeEvent(event)
 
 
-app: Optional[QApplication] = None
-window: Optional[MainWindow] = None
+app = None
+window = None
 
 
 def init_app(argv=None):
