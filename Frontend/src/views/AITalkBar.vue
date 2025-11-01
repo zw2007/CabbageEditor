@@ -1,20 +1,6 @@
 <template>
   <div class="border-2 border-[#84a65b] rounded-md relative">
-    <!-- 标题栏 -->
-    <div
-        class="border-t-2 border-r-2 border-l-2 border-gray-950 titlebar fixed top-0 left-0 right-0 flex items-center w-full p-2 justify-between bg-[#84A65B] cursor-move select-none z-50"
-        @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag"
-        @dblclick="handleDoubleClick">
-      <div class="text-white font-medium w-auto whitespace-nowrap">助手</div>
-      <!-- 按钮组 -->
-      <div class="flex w-full space-x-2 justify-end">
-        <button @click.stop="closeFloat"
-                class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          ×
-        </button>
-      </div>
-    </div>
-
+    <DockTitleBar title="助手" extraClass="bg-[#84A65B]" @close="closeFloat" />
     <!-- 四周拖动边框 -->
     <div class="absolute top-0 left-0 w-full h-2 cursor-n-resize z-40" @mousedown="(e) => startResize(e, 'n')"></div>
     <div class="absolute bottom-0 left-0 w-full h-2 cursor-s-resize z-40" @mousedown="(e) => startResize(e, 's')"></div>
@@ -68,6 +54,7 @@
 <script setup>
 import {ref, inject, onMounted, onUnmounted} from 'vue';
 import {useDragResize} from '@/composables/useDragResize';
+import DockTitleBar from '@/components/DockTitleBar.vue'
 
 const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
 

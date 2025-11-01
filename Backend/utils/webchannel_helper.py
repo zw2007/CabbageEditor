@@ -9,14 +9,14 @@ from .scene_manager import SceneManager
 
 
 class WebChannelContext:
-    def __init__(self, channel: QWebChannel, services: dict[str, QObject] | None = None) -> None:
+    def __init__(self, channel: QWebChannel, services=None) -> None:
         self.channel = channel
         self.services = services or {}
 
 
-_scene_manager_singleton: SceneManager | None = None
+_scene_manager_singleton = None
 
-def _get_scene_manager() -> SceneManager:
+def _get_scene_manager():
     global _scene_manager_singleton
     if _scene_manager_singleton is None:
         _scene_manager_singleton = SceneManager()
@@ -25,17 +25,18 @@ def _get_scene_manager() -> SceneManager:
 
 def setup_webchannel_for_view(
     view: QWebEngineView,
-    central_manager: object | None,
+    central_manager,
     *,
     register_services: bool = False,
     on_create_route: _t.Callable | None = None,
     on_remove_route: _t.Callable | None = None,
     on_message_to_dock: _t.Callable[[str, str], None] | None = None,
     on_command_to_main: _t.Callable[[str, str], None] | None = None,
+    extra_objects=None,
 ) -> WebChannelContext:
     channel = QWebChannel()
 
-    services: dict[str, QObject] = {}
+    services = {}
 
     if register_services:
         try:
@@ -77,7 +78,15 @@ def setup_webchannel_for_view(
                 "appService": app_service,
             }
         except Exception as e:
-            print(f"[WARN] 注册服务对象失败: {e}")
+            print("[WARN] 注册服务对象失败: {}".format(e))
+
+    # 注册自定义对象（如 DockBridge）
+    if extra_objects:
+        for name, obj in extra_objects.items():
+            try:
+                channel.registerObject(name, obj)
+            except Exception as e:
+                print("[WARN] 注册自定义对象 {} 失败: {}".format(name, e))
 
     try:
         view.page().setWebChannel(channel)
