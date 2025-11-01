@@ -170,7 +170,7 @@ async function waitWebChannel() {
   return !!(window.pyBridge || window.sceneService || window.appService || window.scriptingService);
 }
 
-const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
+const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 const workspace = ref(null);
 const character = ref('');
 const px = ref('0.0'), py = ref('0.0'), pz = ref('0.0');

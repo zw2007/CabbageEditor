@@ -122,8 +122,7 @@ const {
   stopDrag,
   onDrag,
   stopResize,
-  onResize,
-  handleDoubleClick
+  onResize
 } = useDragResize();
 const sceneImages = ref([]);
 const route = useRoute();

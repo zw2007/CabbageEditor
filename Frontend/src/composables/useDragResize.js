@@ -130,14 +130,6 @@ export function useDragResize() {
         event.preventDefault();
     };
 
-    // 双击处理逻辑（保持不变）
-    const handleDoubleClick = () => {
-        if (isFloating.value) {
-            isFloating.value = false;
-            safeForward('float', {isFloating: false});
-        }
-    };
-
     const startResize = (event, direction) => {
         if (event.button !== 0) return;
 
@@ -227,7 +219,6 @@ export function useDragResize() {
         onDrag,
         stopResize,
         onResize,
-        handleDoubleClick,
         isFloating
     };
 }

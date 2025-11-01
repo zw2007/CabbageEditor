@@ -27,9 +27,15 @@ class DockDragBridge(QObject):
             if not self._dock.isFloating():
                 self._dock.setFloating(True)
                 self._dock.raise_()
-            # 显示检测区域
+            # 显示/隐藏检测区域（当前实现始终隐藏，但调用不影响）
             if hasattr(self._main, 'show_detection_zones'):
                 self._main.show_detection_zones(True)
+            # 标记正在拖拽的 dock，供延迟停靠使用
+            if hasattr(self._main, 'set_dragging_dock'):
+                try:
+                    self._main.set_dragging_dock(self._dock)
+                except Exception:
+                    pass
             web = self._dock.widget()
             web_global = web.mapToGlobal(QPoint(0, 0)) if web else self._dock.mapToGlobal(QPoint(0, 0))
             self._drag_start_global = web_global + QPoint(int(x), int(y))
@@ -39,15 +45,18 @@ class DockDragBridge(QObject):
 
     @Slot(int, int)
     def drag_move(self, x, y):
+        # 若已不再浮动（可能已在计时器触发时自动停靠），停止移动
+        if not self._dock.isFloating():
+            return
         if self._drag_start_global is None or self._orig_dock_global is None:
             return
         try:
             current_global = QCursor.pos()
-            # 更新预览
+            # 更新预览/计时（延迟停靠）
             area = self._NO_DOCK
             if hasattr(self._main, 'update_dock_preview'):
                 area = self._main.update_dock_preview(current_global)
-            # 无预览区域时，窗口跟随鼠标移动
+            # 无占位预览时，窗口跟随鼠标移动
             if area == self._NO_DOCK:
                 delta = current_global - self._drag_start_global
                 new_global = self._orig_dock_global + delta
@@ -58,18 +67,22 @@ class DockDragBridge(QObject):
     @Slot()
     def end_drag(self):
         try:
+            # 释放时不再强制停靠（除非开启 _dock_on_release），仅做清理
             if hasattr(self._main, 'try_dock_widget') and self._drag_start_global is not None:
-                # 传入当前 dock 实例
                 try:
                     self._main.try_dock_widget(QCursor.pos(), self._dock)
                 except TypeError:
-                    # 兼容未接受 dock 参数的旧签名
                     self._main.try_dock_widget(QCursor.pos())
         except Exception:
             pass
         finally:
             if hasattr(self._main, 'show_detection_zones'):
                 self._main.show_detection_zones(False)
+            if hasattr(self._main, 'set_dragging_dock'):
+                try:
+                    self._main.set_dragging_dock(None)
+                except Exception:
+                    pass
             self._drag_start_global = None
             self._orig_dock_global = None
 
@@ -233,13 +246,15 @@ class RouteDockWidget(QDockWidget):
                 pass
         except Exception:
             self.profile = None
-        self.browser.load(self.url)
+        # NOTE: 延后加载到 setup_web_channel 之后，确保先设置 QWebChannel
+        # self.browser.load(self.url)
 
-        try:
-            self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
-                "window.__dockRouteName = {};".format(json.dumps(name))))
-        except Exception:
-            pass
+        # NOTE: 延后注册 loadFinished 注入，保证在设置 WebChannel 后绑定
+        # try:
+        #     self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
+        #         "window.__dockRouteName = {};".format(json.dumps(name))))
+        # except Exception:
+        #     pass
 
         self.setWidget(self.browser)
 
@@ -295,7 +310,8 @@ class RouteDockWidget(QDockWidget):
             except Exception as e:
                 print('[ERROR] _on_remove_route 处理失败: {}'.format(e))
 
-        drag_bridge = DockDragBridge(self, self.Main_Window, self)
+        host_window = getattr(self.Main_Window, 'osd', self.Main_Window)
+        drag_bridge = DockDragBridge(self, host_window, self)
 
         self._webchannel_ctx = setup_webchannel_for_view(
             self.browser,
@@ -307,6 +323,14 @@ class RouteDockWidget(QDockWidget):
             extra_objects={"dockBridge": drag_bridge},
         )
         self.services = getattr(self._webchannel_ctx, 'services', {}) or {}
+
+        # 确保在设置 WebChannel 之后再加载页面，这样前端能拿到 dockBridge
+        try:
+            self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
+                "window.__dockRouteName = {};".format(json.dumps(name))))
+        except Exception:
+            pass
+        self.browser.load(self.url)
 
         self.central_manager.register_dock(self.name, self)
 

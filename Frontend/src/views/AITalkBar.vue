@@ -56,7 +56,7 @@ import {ref, inject, onMounted, onUnmounted} from 'vue';
 import {useDragResize} from '@/composables/useDragResize';
 import DockTitleBar from '@/components/DockTitleBar.vue'
 
-const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize, handleDoubleClick} = useDragResize();
+const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 
 const messages = ref([
   {sender: "AI", text: "你好！我是 AI。"},
@@ -130,18 +130,7 @@ const closeFloat = async () => {
     console.error("未发现 Dock 控制通道 (appService/pyBridge)");
   }
 };
-/*
-// 双击事件处理
-const handleDoubleClick = () => {
-  if (window.pyBridge) {
-    window.pyBridge.forwardDockEvent('open', JSON.stringify({
-      widgetId: "AITalkBar"
-    }));
-  } else {
-    console.error("Python SendMessageToDock 未连接！");
-  }
-};
-*/
+
 const handleResizeMove = (e) => {
   if (dragState.value.isResizing) onResize(e);
 };

@@ -8,7 +8,6 @@
     @pointercancel="onPointerUp"
     @lostpointercapture="onPointerUp"
     @mousedown.prevent.stop
-    @dblclick="handleDoubleClick"
     style="touch-action: none; -webkit-user-select: none; user-select: none;"
   >
     <div class="text-white font-medium w-auto whitespace-nowrap">{{ title }}</div>
@@ -33,7 +32,7 @@ const props = defineProps({
 
 defineEmits(['close']);
 
-const { startDrag, onDrag, stopDrag, handleDoubleClick } = useDragResize();
+const { startDrag, onDrag, stopDrag } = useDragResize();
 
 function onPointerDown(e) {
   try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); } catch(_) {}
