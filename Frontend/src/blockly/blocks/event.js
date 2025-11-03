@@ -22,13 +22,27 @@ export const defineEventBlocks = (actorname, broadcastList, createNewBroadcast) 
     }
   };
   
+  // 常用键选项（字母、数字、方向键与若干特殊键）
+  const KEY_OPTIONS = (function(){
+    const letters = Array.from({length:26},(v,i)=>String.fromCharCode(65+i));
+    const nums = Array.from({length:10},(v,i)=>String(i));
+    const keys = [];
+    letters.forEach(k=>keys.push([k, `Key${k}`]));
+    nums.forEach(n=>keys.push([n, `Digit${n}`]));
+    // 方向键与特殊键
+    const special = [
+      ['ArrowUp','ArrowUp'], ['ArrowDown','ArrowDown'], ['ArrowLeft','ArrowLeft'], ['ArrowRight','ArrowRight'],
+      ['Space','Space'], ['Enter','Enter'], ['Escape','Escape'], ['Tab','Tab'], ['Backspace','Backspace']
+    ];
+    special.forEach(s=>keys.push(s));
+    return keys;
+  })();
+
   Blockly.Blocks['event_keyboard'] = {
     init: function () {
-      // 中文注释：默认按键文本使用 actorname.value 或回退到 'A'
-      const defaultKey = (actorname && typeof actorname === 'object' && 'value' in actorname && actorname.value) ? actorname.value : 'A';
       this.appendDummyInput()
        .appendField('当按下')
-       .appendField(new Blockly.FieldTextInput(String(defaultKey)), 'x')
+       .appendField(new Blockly.FieldDropdown(KEY_OPTIONS), 'x')
        .appendField('时');
       this.appendStatementInput('DO') // 新增：允许后续语句块串联
           .setCheck(null);

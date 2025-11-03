@@ -56,7 +56,6 @@ class MainWindow(QMainWindow):
 
         self.osd.show()
 
-    # ---- 原有事件转发/窗口管理 ----
     def changeEvent(self, event) -> None:
         if event.type() == QEvent.Type.WindowStateChange:
             if self.windowState() == Qt.WindowState.WindowMinimized:

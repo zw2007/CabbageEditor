@@ -20,8 +20,6 @@ export const defineEventGenerators = () => {
     const key = block.getFieldValue('x') || ''
     let branch = pythonGenerator.statementToCode(block, 'DO');
     if (!branch) branch = pythonGenerator.INDENT + 'pass\n';
-    // 将该事件标记行输出到 handler 中（由 index.js 负责路由到 def handle）
-    // 后续串联的语句将自动附加在本块之后，属于 handler 函数体
     return `if key == '${key}':\n` + indent(branch);
   };
   

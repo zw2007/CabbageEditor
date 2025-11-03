@@ -1,6 +1,6 @@
 import json
 
-from PySide6.QtCore import Qt, QPoint, QUrl
+from PySide6.QtCore import Qt, QPoint, QUrl, Signal
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .dock_widget import RouteDockWidget, DockCleanupWidget
@@ -41,6 +41,7 @@ def get_dock_area(position, floatposition, size):
 
 
 class BrowserWidget(QWebEngineView):
+    input_code_signal = Signal(str)
     def __init__(self, Main_Window, url: QUrl):
         super(BrowserWidget, self).__init__(Main_Window)
         # 不再使用 bridge/channel
@@ -120,9 +121,20 @@ class BrowserWidget(QWebEngineView):
 
         if command_name == "input_event":
             try:
-                _ = json.loads(command_data) if isinstance(command_data, str) else command_data
+                payload = json.loads(command_data) if isinstance(command_data, str) else command_data
             except Exception:
-                pass
+                payload = command_data
+            try:
+                kind = payload.get('kind', '?') if isinstance(payload, dict) else '?'
+                etype = payload.get('type', '?') if isinstance(payload, dict) else '?'
+                key = payload.get('key', '?') if isinstance(payload, dict) else '?'
+                code = payload.get('code', '?') if isinstance(payload, dict) else '?'
+                cx = payload.get('clientX') if isinstance(payload, dict) else None
+                cy = payload.get('clientY') if isinstance(payload, dict) else None
+                print(f"[input_event] kind={kind} type={etype} key={key} code={code} pos=({cx},{cy})")
+                self.input_code_signal.emit(str(code))
+            except Exception:
+                print(f"[input_event] raw={command_data}")
             return
         return
 

@@ -23,27 +23,25 @@ let rafIdWheel = null // requestAnimationFrame ID（滚轮）
 let pendingMove = null // 待处理的鼠标移动事件
 let pendingWheel = null // 待处理的滚轮事件
 
+const DEBUG = false // 打开/关闭组件内部调试输出
+
 // 判断事件目标是否为输入区域（如输入框、文本域、可编辑内容）
 function isTypingTarget(target) {
   if (!target) return false
   const tag = (target.tagName || '').toLowerCase()
   if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return true
-  // 避免捕获显式排除的元素
   return !!target.closest?.('[data-no-global-input]')
 }
 
-// 向 Python 端发送事件（通过 pyBridge）
 function sendToPython(commandName, payload) {
   try {
-    if (window.AppService) {
-      window.AppService.send_message_to_main(commandName, JSON.stringify(payload))
-    }
+    if (DEBUG) console.debug('[InputEventBridge] sendToPython', commandName, payload)
+    window.appService.send_message_to_main(commandName, JSON.stringify(payload))
   } catch (e) {
-    // 通道未准备好时静默忽略
+    if (DEBUG) console.error('[InputEventBridge] sendToPython failed', e)
   }
 }
 
-// 基础事件字段（时间戳、修饰键、场景名等）
 function baseEventFields(e) {
   return {
     // 键盘修饰键
@@ -56,17 +54,19 @@ function baseEventFields(e) {
   }
 }
 
-// 键盘事件：按下
 function onKeyDown(e) {
+  if (DEBUG) console.error('[InputEventBridge] onKeyDown', e && e.key)
   // 全局 ESC：通过 Python 桥接打开设置 Dock（浮动居中）
   if (props.enabled && (e.key === 'Escape' || e.code === 'Escape')) {
-    if (window.AppService && typeof window.AppService.add_dock_widget === 'function') {
-      // 注意：重复调用后端会切换 Dock（存在则关闭），这里直接调用，保持与后端行为一致
-      window.AppService.add_dock_widget('SetUp', '/SetUp', 'float', 'center')
+    if (window.appService && typeof window.appService.add_dock_widget === 'function') {
+      window.appService.add_dock_widget('SetUp', '/SetUp', 'float', 'center')
     }
   }
   // 普通键盘事件上报：避免打断输入框编辑
-  if (!props.enabled || isTypingTarget(e.target)) return
+  if (!props.enabled || isTypingTarget(e.target)) {
+    console.error('isTypingTarget key', e && e.key)
+    return
+  }
   const data = {
     kind: 'keyboard', // 事件类型：键盘
     type: 'keydown', // 事件动作：按下
@@ -80,6 +80,7 @@ function onKeyDown(e) {
 
 // 键盘事件：松开
 function onKeyUp(e) {
+  if (DEBUG) console.error('[InputEventBridge] onKeyUp', e && e.key)
   if (!props.enabled || isTypingTarget(e.target)) return
   const data = {
     kind: 'keyboard',
@@ -95,6 +96,7 @@ function onKeyUp(e) {
 function onMouseDown(e) {
   if (!props.enabled) return
   isPointerDown.value = true
+  if (DEBUG) console.error('[InputEventBridge] onMouseDown', e && {clientX: e.clientX, clientY: e.clientY, button: e.button})
   const data = {
     kind: 'mouse',
     type: 'mousedown',
@@ -111,6 +113,7 @@ function onMouseDown(e) {
 function onMouseUp(e) {
   if (!props.enabled) return
   isPointerDown.value = false
+  if (DEBUG) console.error('[InputEventBridge] onMouseUp', e && {clientX: e.clientX, clientY: e.clientY, button: e.button})
   const data = {
     kind: 'mouse',
     type: 'mouseup',
@@ -129,6 +132,7 @@ function flushMove() {
   const e = pendingMove
   pendingMove = null
   rafIdMove = null
+  if (DEBUG) console.error('[InputEventBridge] flushMove', {clientX: e.clientX, clientY: e.clientY, dragging: isPointerDown.value})
   const data = {
     kind: 'mouse',
     type: 'mousemove',
@@ -156,6 +160,7 @@ function flushWheel() {
   const e = pendingWheel
   pendingWheel = null
   rafIdWheel = null
+  if (DEBUG) console.error('[InputEventBridge] flushWheel', {deltaX: e.deltaX, deltaY: e.deltaY})
   const data = {
     kind: 'mouse',
     type: 'wheel', // 滚轮事件
@@ -179,6 +184,7 @@ function onWheel(e) {
 // 鼠标双击事件
 function onDblClick(e) {
   if (!props.enabled) return
+  if (DEBUG) console.error('[InputEventBridge] onDblClick', {clientX: e.clientX, clientY: e.clientY})
   const data = {
     kind: 'mouse',
     type: 'dblclick',
@@ -194,6 +200,7 @@ function onDblClick(e) {
 // 鼠标右键菜单事件
 function onContextMenu(e) {
   if (!props.enabled) return
+  if (DEBUG) console.error('[InputEventBridge] onContextMenu', {clientX: e.clientX, clientY: e.clientY})
   const data = {
     kind: 'mouse',
     type: 'contextmenu', // 右键菜单事件
@@ -214,7 +221,7 @@ onMounted(() => {
   // document.addEventListener('mousemove', onMouseMove, { passive: true })
   // document.addEventListener('wheel', onWheel, { passive: true })
   // document.addEventListener('dblclick', onDblClick, { passive: true })
-  // document.addEventListener('contextmenu', onContextMenu, { passive: true })
+  // document.addEventListener('contextmenu', onContextMenu, { passive: true }
 })
 
 onUnmounted(() => {
