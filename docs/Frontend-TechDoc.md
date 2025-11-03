@@ -110,16 +110,6 @@ window.appService.send_message_to_dock(
 </script>
 ```
 
-## 常见问题与排障
-- 看不到 window.appService：
-  - 检查 qwebchannel.js 是否加载；等待 `window.webChannelReady`；查看控制台是否有服务注册警告。
-- 调用 add_dock_widget 没反应：
-  - 确认 size 类型（对象或 JSON 字符串均可）；routename 是否唯一；若在 Dock 内调用，确保已出现“回流”日志（后端会打印回流相关 [DEBUG]/[WARN]）。
-- 拖拽不动/只在停靠模式移动：
-  - drag 仅对浮动窗口生效；先发送 float 事件或将 Dock 设为浮动。
-- 无法连接服务/信号：
-  - 统一等待 `window.webChannelReady`；检查对象名 `sceneService/appService/...` 是否存在。
-
 ## 实践建议
 - routename 保持唯一，如 "Object_<scene>_<name>"，避免“同名即关闭”的行为误判为“没创建”。
 - size 可传对象，后端会自动解析；若传字符串请用 JSON.stringify。
