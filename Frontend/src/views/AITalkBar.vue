@@ -76,8 +76,6 @@ const SendMessageToAI = async (query) => {
   const payload = JSON.stringify({message: query});
   if (window.aiService && typeof window.aiService.send_message_to_ai === 'function') {
     window.aiService.send_message_to_ai(payload);
-  } else if (window.pyBridge && typeof window.pyBridge.send_message_to_ai === 'function') {
-    window.pyBridge.send_message_to_ai(payload);
   } else {
     console.error("未发现 AI 通道 (aiService/pyBridge)");
   }

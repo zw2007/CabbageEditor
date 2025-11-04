@@ -5,13 +5,13 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
 
-from .utils.bridge import Bridge
-from .utils.scene_manager import SceneManager
+from Backend.utils.scene_manager import SceneManager
+from .services.app import AppService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TransformMCPServer")
 
-qt_bridge = Bridge()
+app_service = AppService()
 
 
 @asynccontextmanager
@@ -39,7 +39,7 @@ def call_actor_operation(scene_name: str, actor_name: str, operation: str, x: fl
         "y": y,
         "z": z
     })
-    qt_bridge.actor_operation(data)
+    app_service.actor_operation_requested.emit(data)
     return f"Sent {operation}({x}, {y}, {z}) to actor '{actor_name}' in scene '{scene_name}'"
 
 

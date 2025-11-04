@@ -10,6 +10,7 @@ class AppService(QObject):
     remove_route_requested = Signal(str)
     message_to_dock_requested = Signal(str, str)
     command_to_main_requested = Signal(str, str)
+    actor_operation_requested = Signal(str)
 
     @Slot(str, str, str, str, str)
     def add_dock_widget(self, routename: str, routepath: str, position: str = "left", floatposition: str = "None",
