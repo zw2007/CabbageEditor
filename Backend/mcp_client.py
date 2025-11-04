@@ -1,12 +1,45 @@
 import asyncio, json, anyio
-
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Tuple
 from contextlib import AsyncExitStack, asynccontextmanager
 
 from openai import OpenAI
 
 from mcp import ClientSession
 from mcp.server.fastmcp import FastMCP
+
+
+_CONFIG_FILENAME = "mcp_client_secrets.json"
+
+
+def _load_openai_config(config_path: Optional[str] = None) -> Tuple[str, str]:
+    """
+    需要新建自己的mcp_client_secrets.json文件
+    提供了mcp_client_secrets_example.json作为示例
+    强烈推荐硅基流动的api
+    """
+    path = Path(config_path) if config_path else Path(__file__).with_name(_CONFIG_FILENAME)
+
+    if not path.exists():
+        raise RuntimeError(
+            f"缺少配置文件: {path}。"
+            "请创建一个包含 'api_key' 和 'base_url' 的 JSON 文件。"
+        )
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"配置文件 {path} 中的 JSON 格式无效: {exc}") from exc
+
+    api_key = data.get("api_key")
+    base_url = data.get("base_url")
+
+    if not api_key or not base_url:
+        raise RuntimeError(
+            f"配置文件 {path} 中必须定义非空的 'api_key' 和 'base_url'。"
+        )
+
+    return api_key, base_url
 
 
 @asynccontextmanager
@@ -51,10 +84,8 @@ class MCPClient:
     def __init__(self):
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
-        self.client = OpenAI(
-            api_key="sk-txlrveamjgduydqvpfqbfvgqoqtjkbarnikcoeaeddxzzmjo",
-            base_url="https://api.siliconflow.cn/v1",
-        )
+        api_key, base_url = _load_openai_config()
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
 
     async def connect_to_server(self, app: FastMCP):
         print("--- Creating internal MCP connection... ---")
@@ -126,8 +157,7 @@ class MCPClient:
             )
 
             response = self.client.chat.completions.create(
-                model="Qwen/Qwen2.5-7B-Instruct",
-                messages=messages,
+                model="Qwen/Qwen2.5-7B-Instruct", messages=messages
             )
             return response.choices[0].message.content
 
