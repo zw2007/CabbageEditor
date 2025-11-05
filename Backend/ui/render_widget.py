@@ -48,18 +48,5 @@ class RenderWidget(QWidget):
             except Exception:
                 pass
 
-        self.image_path = os.path.join(os.path.dirname(__file__), "background.png")
-        self.pixmap: Optional[QPixmap] = None
-        if self.image_path and os.path.exists(self.image_path):
-            self.pixmap = QPixmap(self.image_path)
-            self.update()
-        else:
-            print(f"警告: 背景图片路径不存在: {self.image_path}")
-
-    def paintEvent(self, event) -> None:
-        if self.pixmap:
-            painter = QPainter(self)
-            painter.drawPixmap(self.rect(), self.pixmap)
-
     def scene(self):
         return self.winId()
