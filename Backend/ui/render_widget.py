@@ -5,8 +5,11 @@ from PySide6.QtCore import QRect, Signal
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
-from ..utils.scene_manager import SceneManager
+from ..utils.engine_import import load_corona_engine
+from ..utils.scene import Scene
+from ..utils.camera import Camera
 
+CoronaEngine = load_corona_engine()
 
 class RenderWidget(QWidget):
     geometry_changed = Signal(QRect)
@@ -18,35 +21,29 @@ class RenderWidget(QWidget):
         self.setGeometry(0, 0, self.Main_Window.width(), self.Main_Window.height())
         self.setStyleSheet("QLabel {background-color: transparent;}")
 
-        try:
-            import CoronaEngine
-            print("import CoronaEngine")
-        except ImportError:
-            from ..corona_engine_fallback import CoronaEngine
+        # 创建场景（不再需要 winId 参数）
+        self.scene = Scene(name="mainscene", light_field=False)
 
-        self.engine_scene = CoronaEngine.Scene(int(self.winId()), False)
-
+        # 创建相机
         try:
-            self.scene_wrapper = SceneManager().create_scene("mainscene", engine_scene=self.engine_scene)
+            self.camera = Camera(
+                position=[10.0, 10.0, 0.0],
+                forward=[-1.0, -1.0, -1.0],
+                world_up=[0.0, 1.0, 0.0],
+                fov=45.0,
+                name="MainCamera"
+            )
+
+            # 设置渲染表面（绑定到窗口）
+            self.camera.set_surface(int(self.winId()))
+
+            # 将相机添加到场景
+            self.scene.add_camera(self.camera)
+
         except Exception as e:
-            print(f"Failed to register mainscene with SceneManager: {e}")
-            self.scene_wrapper = None
-
-        if self.scene_wrapper is not None:
-            try:
-                self.scene_wrapper.set_camera(
-                    [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
-                )
-            except Exception as e:
-                print(f"Failed to set camera on scene_wrapper: {e}")
-        else:
-
-            try:
-                self.engine_scene.setCamera(
-                    [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
-                )
-            except Exception:
-                pass
+            print(f"Failed to create or setup camera: {e}")
+            self.camera = None
 
     def scene(self):
-        return self.winId()
+        """返回场景对象"""
+        return self.scene
