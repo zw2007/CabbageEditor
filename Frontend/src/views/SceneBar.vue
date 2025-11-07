@@ -285,7 +285,7 @@ const HandleResizeUp = () => {
 };
 
 onMounted(async () => {
-  currentSceneName.value = route.query.sceneName || 'scene1';
+  currentSceneName.value = route.query.sceneName || 'MainScene';
   document.addEventListener('mousemove', HandleResizeMove);
   document.addEventListener('mouseup', HandleResizeUp);
   document.addEventListener('mousemove', onDrag);

@@ -1,214 +1,232 @@
 from typing import Dict, List, Any, Optional
-from .engine_object_factory import EngineObjectFactory
 from .actor import Actor
+from .camera import Camera
+from .light import Light
 import os
 
 
 class Scene:
-    def __init__(self, name: str, engine_scene: Any = None):
+    """
+    场景管理类，负责管理场景中的对象引用
+
+    注意：Scene 只管理对象的引用，不负责对象的创建和销毁
+    对象（Actor/Camera/Light）应该独立创建，通过 add_xxx 添加到场景
+    """
+
+    def __init__(self, name: str = "Scene", light_field: bool = False):
+        """
+        创建场景
+
+        Args:
+            name: 场景名称
+            light_field: 是否使用光场
+        """
+        # 延迟导入避免循环依赖
+        from .engine_object_factory import EngineObjectFactory
+
         self.name = name
+        self.light_field = light_field
 
-        if engine_scene is not None:
-            self.engine_scene = engine_scene
-        else:
-            self.engine_scene = EngineObjectFactory.create_scene()
-        self._actor_registry: Dict[str, Actor] = {}
+        # 创建引擎场景对象
+        self.engine_scene = EngineObjectFactory.create_scene(light_field=light_field)
 
-        self._camera: Optional[Any] = None
-        self._light: Optional[Any] = None
+        # 对象引用列表（只存储引用，不负责生命周期）
+        self._actors: List[Actor] = []
+        self._cameras: List[Camera] = []
+        self._lights: List[Light] = []
 
-        self.camera_position: List[float] = [0.0, 5.0, 10.0]
-        self.camera_forward: List[float] = [0.0, 1.5, 0.0]
-        self.camera_up: List[float] = [0.0, -1.0, 0.0]
-        self.camera_fov: float = 45.0
-        self.sun_direction: List[float] = [1.0, 1.0, 1.0]
+        # 场景配置
+        self.sun_direction: List[float] = [0.0, -1.0, 0.0]
 
-    def add_actor(self, obj_path: str) -> Dict[str, Any]:
-        """在引擎 scene 中创建 actor，并返回兼容的 dict（name/path/engine_obj）。
-        EngineObjectFactory.create_actor 已经实现了尝试复用已存在 engine actor 的逻辑。
+    def add_actor(self, actor: Actor) -> None:
         """
-        actor = EngineObjectFactory.create_actor(self.engine_scene, obj_path)
+        添加 Actor 到场景（只添加引用，不创建对象）
 
-        name = getattr(actor, 'name', None) or getattr(actor.engine_obj, 'name', None) or os.path.basename(obj_path)
+        Args:
+            actor: 已创建的 Actor 对象
+        """
+        if actor in self._actors:
+            return  # 已存在，避免重复添加
 
-        if not self._engine_supports_listing():
-            self._actor_registry[name] = actor
-        return actor.to_dict()
+        # 添加到本地列表
+        self._actors.append(actor)
+        print(self._actors)
 
-    def _engine_supports_listing(self) -> bool:
-        """Detect if the engine scene exposes a way to enumerate actors. Try common API names."""
-        eng = self.engine_scene
-        if eng is None:
+        # 调用 C++ API：scene.add_actor(actor)
+        if hasattr(self.engine_scene, 'add_actor'):
+            self.engine_scene.add_actor(actor.engine_obj)
+
+    def remove_actor(self, actor: Actor) -> bool:
+        """
+        从场景移除 Actor（只移除引用，不销毁对象）
+
+        Args:
+            actor: 要移除的 Actor 对象
+
+        Returns:
+            是否成功移除
+        """
+        if actor not in self._actors:
             return False
-        for attr in ('listActors', 'list_actor_names', 'getActorNames', 'get_actor_names', 'actors', 'getActors'):
-            if hasattr(eng, attr):
-                return True
-        return False
 
-    def list_actor_names(self) -> List[str]:
-        """Return list of actor names from engine if possible, else from minimal registry."""
-        eng = self.engine_scene
-        try:
+        # 从本地列表移除
+        self._actors.remove(actor)
 
-            if hasattr(eng, 'list_actor_names'):
-                return list(eng.list_actor_names())
-            if hasattr(eng, 'getActorNames'):
-                return list(eng.getActorNames())
-            if hasattr(eng, 'get_actor_names'):
-                return list(eng.get_actor_names())
-            if hasattr(eng, 'listActors'):
+        # 调用 C++ API：scene.remove_actor(actor)
+        if hasattr(self.engine_scene, 'remove_actor'):
+            self.engine_scene.remove_actor(actor.engine_obj)
 
-                items = eng.listActors()
-                names = []
-                for it in items:
-                    n = getattr(it, 'name', None) or getattr(it, 'get_name', lambda: None)()
-                    if n:
-                        names.append(n)
-                return names
-            if hasattr(eng, 'getActors'):
-                items = eng.getActors()
-                names = []
-                for it in items:
-                    n = getattr(it, 'name', None) or getattr(it, 'get_name', lambda: None)()
-                    if n:
-                        names.append(n)
-                return names
-        except Exception:
-            pass
+        return True
 
-        return list(self._actor_registry.keys())
-
-    def get_actor(self, actor_name: str) -> Optional[Actor]:
-        """Try to obtain an Actor wrapper for an existing actor in the engine.
-        Prefer to return a cached wrapper from EngineObjectFactory when possible.
+    def add_camera(self, camera: Camera) -> None:
         """
-        eng = self.engine_scene
-        try:
+        添加 Camera 到场景（只添加引用，不创建对象）
 
-            obj = None
-            try:
-                if hasattr(eng, 'getActor'):
-                    obj = eng.getActor(actor_name)
-                elif hasattr(eng, 'get_actor'):
-                    obj = eng.get_actor(actor_name)
-                elif hasattr(eng, 'findActor'):
-                    obj = eng.findActor(actor_name)
-            except Exception:
-                obj = None
-
-            if obj is not None:
-
-                cache = getattr(EngineObjectFactory, '_actor_cache', None)
-                if cache is not None and actor_name in cache:
-                    return cache[actor_name]
-
-                return Actor(obj, getattr(obj, 'path', actor_name))
-        except Exception:
-            pass
-
-        return self._actor_registry.get(actor_name)
-
-    def remove_actor(self, actor_name: str) -> bool:
-        """Remove actor by name: try engine APIs first; if we have a wrapper, call its delete() to avoid
-        duplicated deletion logic. Returns True if actor was removed.
+        Args:
+            camera: 已创建的 Camera 对象
         """
-        eng = self.engine_scene
-        removed = False
+        if camera in self._cameras:
+            return
 
-        wrapper = self._actor_registry.get(actor_name)
-        if wrapper is None:
-            cache = getattr(EngineObjectFactory, '_actor_cache', None)
-            if cache is not None and actor_name in cache:
-                wrapper = cache[actor_name]
+        self._cameras.append(camera)
 
-        if wrapper is not None:
-            try:
-                removed = wrapper.delete()
-            except Exception:
-                removed = False
+        if hasattr(self.engine_scene, 'add_camera'):
+            self.engine_scene.add_camera(camera.engine_obj)
 
-        if not removed:
-            try:
+    def remove_camera(self, camera: Camera) -> bool:
+        """
+        从场景移除 Camera（只移除引用，不销毁对象）
 
-                if hasattr(eng, 'removeActor'):
-                    removed = bool(eng.removeActor(actor_name))
-                elif hasattr(eng, 'remove_actor'):
-                    removed = bool(eng.remove_actor(actor_name))
-                else:
+        Args:
+            camera: 要移除的 Camera 对象
 
-                    actor_obj = None
-                    if hasattr(eng, 'getActor'):
-                        actor_obj = eng.getActor(actor_name)
-                    elif hasattr(eng, 'get_actor'):
-                        actor_obj = eng.get_actor(actor_name)
-                    if actor_obj is not None and hasattr(actor_obj, 'delete'):
-                        try:
-                            actor_obj.delete()
-                            removed = True
-                        except Exception:
-                            removed = False
-            except Exception:
-                removed = False
+        Returns:
+            是否成功移除
+        """
+        if camera not in self._cameras:
+            return False
 
-        if not removed and actor_name in self._actor_registry:
-            del self._actor_registry[actor_name]
-            removed = True
-        return removed
+        self._cameras.remove(camera)
 
-    def ensure_camera(self):
-        if self._camera is None:
-            try:
-                self._camera = EngineObjectFactory.create_camera(self.engine_scene)
-            except Exception:
-                self._camera = None
-        return self._camera
+        if hasattr(self.engine_scene, 'remove_camera'):
+            self.engine_scene.remove_camera(camera.engine_obj)
 
-    def ensure_light(self):
-        if self._light is None:
-            try:
-                self._light = EngineObjectFactory.create_light(self.engine_scene)
-            except Exception:
-                self._light = None
-        return self._light
+        return True
 
-    def set_camera(self, position: List[float], forward: List[float],
-                   up: List[float], fov: float) -> None:
-        self.camera_position = position
-        self.camera_forward = forward
-        self.camera_up = up
-        self.camera_fov = fov
-        cam = self.ensure_camera()
-        try:
-            if cam and hasattr(cam.engine_obj, 'setTransform'):
-                cam.engine_obj.setTransform(position, forward, up, fov)
-            elif self.engine_scene is not None and hasattr(self.engine_scene, 'setCamera'):
-                self.engine_scene.setCamera(position, forward, up, fov)
-        except Exception:
-            pass
+    def add_light(self, light: Light) -> None:
+        """
+        添加 Light 到场景（只添加引用，不创建对象）
+
+        Args:
+            light: 已创建的 Light 对象
+        """
+        if light in self._lights:
+            return
+
+        self._lights.append(light)
+
+        if hasattr(self.engine_scene, 'add_light'):
+            self.engine_scene.add_light(light.engine_obj)
+
+    def remove_light(self, light: Light) -> bool:
+        """
+        从场景移除 Light（只移除引用，不销毁对象）
+
+        Args:
+            light: 要移除的 Light 对象
+
+        Returns:
+            是否成功移除
+        """
+        if light not in self._lights:
+            return False
+
+        self._lights.remove(light)
+
+        if hasattr(self.engine_scene, 'remove_light'):
+            self.engine_scene.remove_light(light.engine_obj)
+
+        return True
 
     def set_sun_direction(self, direction: List[float]) -> None:
+        """
+        设置太阳方向（平行光方向）
+
+        Args:
+            direction: 方向向量 [x, y, z]
+        """
         self.sun_direction = direction
-        light = self.ensure_light()
-        try:
-            if light and hasattr(light.engine_obj, 'setDirection'):
-                light.engine_obj.setDirection(direction)
-            elif hasattr(self.engine_scene, 'setSunDirection'):
-                self.engine_scene.setSunDirection(direction)
-        except Exception:
-            pass
+
+        if hasattr(self.engine_scene, 'set_sun_direction'):
+            self.engine_scene.set_sun_direction(direction)
+
+    # 查询方法
+    def get_actors(self) -> List[Actor]:
+        """获取场景中所有 Actor"""
+        return self._actors.copy()
+
+    def get_actor(self, key: Optional[Any]) -> Optional[Actor]:
+        """获取单个 Actor。
+        参数 key 支持：
+        - str: 按名称匹配（actor.name）
+        - int: 按索引（越界返回 None）
+        - None: 返回 None（如需全部请用 get_actors）
+        """
+        if key is None:
+            return None
+        if isinstance(key, int):
+            if 0 <= key < len(self._actors):
+                return self._actors[key]
+            return None
+        if isinstance(key, str):
+            for a in self._actors:
+                if a.name == key:
+                    return a
+            return None
+        # 不支持的类型
+        return None
+
+    def get_cameras(self) -> List[Camera]:
+        """获取场景中所有 Camera"""
+        return self._cameras.copy()
+
+    def get_lights(self) -> List[Light]:
+        """获取场景中所有 Light"""
+        return self._lights.copy()
+
+    def clear_actors(self) -> None:
+        """清空所有 Actor 引用（不销毁对象）"""
+        for actor in self._actors.copy():
+            self.remove_actor(actor)
+
+    def clear_cameras(self) -> None:
+        """清空所有 Camera 引用（不销毁对象）"""
+        for camera in self._cameras.copy():
+            self.remove_camera(camera)
+
+    def clear_lights(self) -> None:
+        """清空所有 Light 引用（不销毁对象）"""
+        for light in self._lights.copy():
+            self.remove_light(light)
+
+    def clear(self) -> None:
+        """清空场景中所有对象引用（不销毁对象）"""
+        self.clear_actors()
+        self.clear_cameras()
+        self.clear_lights()
 
     def to_dict(self) -> Dict[str, Any]:
-        """Compatibility view of the scene similar to previous scene_dict entries.
-        Include camera/light wrappers when available.
         """
-        actor_dict = {name: actor.to_dict() for name, actor in self._actor_registry.items()}
-        cam = self._camera
-        light = self._light
-        cam_dict = cam.to_dict() if cam is not None else None
-        light_dict = light.to_dict() if light is not None else None
+        转换为字典格式（用于序列化）
+
+        Returns:
+            包含场景数据的字典
+        """
         return {
-            "scene": self.engine_scene,
-            "actor_dict": actor_dict,
-            "camera": cam_dict,
-            "light": light_dict,
+            "name": self.name,
+            "light_field": self.light_field,
+            "sun_direction": self.sun_direction,
+            "actors": [actor.to_dict() for actor in self._actors],
+            "cameras": [camera.to_dict() for camera in self._cameras],
+            "lights": [light.to_dict() for light in self._lights],
         }

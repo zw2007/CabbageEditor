@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TypeVar, Callable, Dict
 import os
 import weakref
 
@@ -14,151 +14,196 @@ from .actor import Actor
 from .camera import Camera
 from .light import Light
 
+T = TypeVar('T')
+
 
 class EngineObjectFactory:
-    _actor_cache = weakref.WeakValueDictionary()
-    _camera_cache = weakref.WeakValueDictionary()
-    _light_cache = weakref.WeakValueDictionary()
+    """引擎对象工厂，负责创建和缓存引擎对象"""
+
+    _actor_cache: Dict[str, Actor] = weakref.WeakValueDictionary()
+    _camera_cache: Dict[str, Camera] = weakref.WeakValueDictionary()
+    _light_cache: Dict[str, Light] = weakref.WeakValueDictionary()
 
     @staticmethod
-    def create_scene() -> Any:
+    def _ensure_engine() -> None:
+        """确保引擎已初始化"""
         if CoronaEngine is None:
-            raise RuntimeError("CoronaEngine 未初始化，无法创建场景")
+            raise RuntimeError("CoronaEngine 未初始化，请检查编译配置")
+
+    @classmethod
+    def _get_or_create(
+        cls,
+        cache: Dict[str, T],
+        key: str,
+        factory: Callable[[], T]
+    ) -> T:
+        """
+        通用缓存获取或创建逻辑
+
+        Args:
+            cache: 缓存字典
+            key: 缓存键
+            factory: 创建对象的工厂函数
+
+        Returns:
+            缓存或新创建的对象
+        """
+        if key in cache:
+            return cache[key]
+
+        obj = factory()
+        cache[key] = obj
+        return obj
+
+    @staticmethod
+    def create_scene(light_field: bool = False) -> Any:
+        """
+        创建场景对象
+
+        Args:
+            light_field: 是否使用光场，默认 False
+
+        Returns:
+            引擎场景对象
+        """
+        EngineObjectFactory._ensure_engine()
+
         SceneCtor = getattr(CoronaEngine, 'Scene', None)
         if SceneCtor is None:
             raise RuntimeError("CoronaEngine 未提供 Scene 构造器")
-        return SceneCtor()
 
-    @staticmethod
-    def _try_find_engine_actor(engine_scene: Any, name: str):
-
-        try:
-            if engine_scene is None:
-                return None
-            if hasattr(engine_scene, 'getActor'):
-                return engine_scene.getActor(name)
-            if hasattr(engine_scene, 'get_actor'):
-                return engine_scene.get_actor(name)
-            if hasattr(engine_scene, 'findActor'):
-                return engine_scene.findActor(name)
-
-            if hasattr(engine_scene, 'listActors'):
-                items = engine_scene.listActors()
-                for it in items:
-                    n = getattr(it, 'name', None) or (hasattr(it, 'get_name') and it.get_name())
-                    if n == name:
-                        return it
-        except Exception:
-            return None
-        return None
+        return SceneCtor(light_field=light_field)
 
     @classmethod
-    def create_actor(cls, engine_scene: Any, obj_path: str) -> Actor:
-        if CoronaEngine is None:
-            raise RuntimeError("CoronaEngine 未初始化，无法创建角色")
+    def create_actor(cls, obj_path: str, use_cache: bool = True) -> Actor:
+        """
+        创建 Actor 对象
+
+        Args:
+            obj_path: 模型文件路径
+            use_cache: 是否使用缓存，默认 True
+
+        Returns:
+            Actor 包装对象
+        """
+        cls._ensure_engine()
+
         if not os.path.exists(obj_path):
             raise FileNotFoundError(f"角色文件不存在: {obj_path}")
 
-        name = os.path.basename(obj_path)
+        cache_key = os.path.basename(obj_path)
 
-        try:
-            found = cls._try_find_engine_actor(engine_scene, name)
-            if found is None:
-                found = cls._try_find_engine_actor(engine_scene, obj_path)
-            if found is not None:
+        if not use_cache:
+            return cls._create_actor_internal(obj_path, cache_key)
 
-                eng_name = getattr(found, 'name', None)
-                if not eng_name and hasattr(found, 'get_name'):
-                    try:
-                        eng_name = found.get_name()
-                    except Exception:
-                        eng_name = None
-                key = eng_name or os.path.basename(obj_path) or obj_path
+        return cls._get_or_create(
+            cls._actor_cache,
+            cache_key,
+            lambda: cls._create_actor_internal(obj_path, cache_key)
+        )
 
-                if key in cls._actor_cache:
-                    return cls._actor_cache[key]
-                wrapper = Actor(found, obj_path)
-                wrapper.name = key
-                cls._actor_cache[key] = wrapper
-                return wrapper
-        except Exception:
-            pass
-
+    @classmethod
+    def _create_actor_internal(cls, obj_path: str, name: str) -> Actor:
+        """内部方法：实际创建 Actor 对象"""
         ActorCtor = getattr(CoronaEngine, 'Actor', None)
         if ActorCtor is None:
             raise RuntimeError("CoronaEngine 未提供 Actor 构造器")
+
         try:
-            actor_obj = ActorCtor(engine_scene, obj_path)
-        except Exception:
-            try:
-                actor_obj = ActorCtor(obj_path)
-            except Exception as e:
-                raise RuntimeError(f"无法创建引擎Actor: {e}")
+            actor_obj = ActorCtor(obj_path)
+        except Exception as e:
+            raise RuntimeError(f"无法创建引擎 Actor: {e}") from e
 
         wrapper = Actor(actor_obj, obj_path)
-
-        eng_name = getattr(actor_obj, 'name', None)
-        if not eng_name and hasattr(actor_obj, 'get_name'):
-            try:
-                eng_name = actor_obj.get_name()
-            except Exception:
-                eng_name = None
-        key_name = eng_name or os.path.basename(obj_path) or obj_path
-        wrapper.name = key_name
-        cls._actor_cache[key_name] = wrapper
+        wrapper.name = name
         return wrapper
 
     @classmethod
-    def create_camera(cls, engine_scene: Any, name: str = "MainCamera") -> Camera:
-        if CoronaEngine is None:
-            raise RuntimeError("CoronaEngine 未初始化，无法创建Camera")
+    def create_camera(cls, name: str = "MainCamera", use_cache: bool = True) -> Camera:
+        """
+        创建 Camera 对象
 
-        if name in cls._camera_cache:
-            return cls._camera_cache[name]
+        Args:
+            name: 相机名称，用于缓存和标识
+            use_cache: 是否使用缓存，默认 True
 
-        cam_obj = None
-        try:
-            if engine_scene is not None:
-                if hasattr(engine_scene, 'getCamera'):
-                    cam_obj = engine_scene.getCamera()
-                elif hasattr(engine_scene, 'get_camera'):
-                    cam_obj = engine_scene.get_camera()
+        Returns:
+            Camera 包装对象
+        """
+        cls._ensure_engine()
 
-            if cam_obj is None:
-                CameraCtor = getattr(CoronaEngine, 'Camera', None)
-                if CameraCtor is not None:
-                    cam_obj = CameraCtor(engine_scene)
-        except Exception:
-            cam_obj = None
+        if not use_cache:
+            return cls._create_camera_internal(name)
 
-        if cam_obj is None:
-            raise RuntimeError("无法创建或获取引擎Camera对象")
-
-        wrapper = Camera(cam_obj, name)
-        cls._camera_cache[name] = wrapper
-        return wrapper
+        return cls._get_or_create(
+            cls._camera_cache,
+            name,
+            lambda: cls._create_camera_internal(name)
+        )
 
     @classmethod
-    def create_light(cls, engine_scene: Any, name: str = "Sun") -> Light:
-        if CoronaEngine is None:
-            raise RuntimeError("CoronaEngine 未初始化，无法创建Light")
-        if name in cls._light_cache:
-            return cls._light_cache[name]
+    def _create_camera_internal(cls, name: str) -> Camera:
+        """内部方法：实际创建 Camera 对象"""
+        CameraCtor = getattr(CoronaEngine, 'Camera', None)
+        if CameraCtor is None:
+            raise RuntimeError("CoronaEngine 未提供 Camera 构造器")
 
-        light_obj = None
         try:
-            if engine_scene is not None and hasattr(engine_scene, 'getLight'):
-                light_obj = engine_scene.getLight()
-            if light_obj is None:
-                LightCtor = getattr(CoronaEngine, 'Light', None)
-                if LightCtor is not None:
-                    light_obj = LightCtor(engine_scene)
-        except Exception:
-            light_obj = None
+            cam_obj = CameraCtor()
+        except Exception as e:
+            raise RuntimeError(f"无法创建引擎 Camera: {e}") from e
 
-        if light_obj is None:
-            raise RuntimeError("无法创建或获取引擎Light对象")
+        return Camera(cam_obj, name)
 
-        wrapper = Light(light_obj, name)
-        cls._light_cache[name] = wrapper
-        return wrapper
+    @classmethod
+    def create_light(cls, name: str = "Sun", use_cache: bool = True) -> Light:
+        """
+        创建 Light 对象
+
+        Args:
+            name: 灯光名称，用于缓存和标识
+            use_cache: 是否使用缓存，默认 True
+
+        Returns:
+            Light 包装对象
+        """
+        cls._ensure_engine()
+
+        if not use_cache:
+            return cls._create_light_internal(name)
+
+        return cls._get_or_create(
+            cls._light_cache,
+            name,
+            lambda: cls._create_light_internal(name)
+        )
+
+    @classmethod
+    def _create_light_internal(cls, name: str) -> Light:
+        """内部方法：实际创建 Light 对象"""
+        LightCtor = getattr(CoronaEngine, 'Light', None)
+        if LightCtor is None:
+            raise RuntimeError("CoronaEngine 未提供 Light 构造器")
+
+        try:
+            light_obj = LightCtor()
+        except Exception as e:
+            raise RuntimeError(f"无法创建引擎 Light: {e}") from e
+
+        return Light(light_obj, name)
+
+    @classmethod
+    def clear_cache(cls, cache_type: str = "all") -> None:
+        """
+        清空缓存
+
+        Args:
+            cache_type: 缓存类型 ("actor", "camera", "light", "all")
+        """
+        if cache_type in ("actor", "all"):
+            cls._actor_cache.clear()
+        if cache_type in ("camera", "all"):
+            cls._camera_cache.clear()
+        if cache_type in ("light", "all"):
+            cls._light_cache.clear()
+

@@ -13,11 +13,12 @@ class SceneManager:
             cls._instance.scenes = {}
         return cls._instance
 
-    def create_scene(self, scene_name: str, engine_scene: Any = None) -> Scene:
-        """创建场景（若已存在则返回现有场景）。可选注入 engine_scene 用于 RenderWidget。"""
+    def create_scene(self, scene_name: str, light_field: bool = False) -> Scene:
         if scene_name not in self.scenes:
-            scene = Scene(scene_name, engine_scene=engine_scene)
+            scene = Scene(name=scene_name, light_field=light_field)
             self.scenes[scene_name] = scene
+            print(f"all scenes:{self.scenes}")
+        print(f"all scenes:{self.scenes}")
         return self.scenes[scene_name]
 
     def get_scene(self, scene_name: str) -> Optional[Scene]:

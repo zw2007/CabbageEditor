@@ -106,7 +106,7 @@ const cameraState = ref({
 
 // 标签页数据
 const tabs = ref([
-  {name: '场景1', id: 'scene1'},
+  {name: '场景1', id: 'MainScene'},
 ]);
 
 // 添加新标签页
@@ -245,7 +245,7 @@ const handleCameraMove = (direction) => {
   }
 
   const payload = JSON.stringify({
-    sceneName: tabs.value[activeTab.value]?.id || 'scene1',
+    sceneName: tabs.value[activeTab.value]?.id || 'MainScene',
     position: [...position],
     forward: [...forward],
     up: [...cameraState.value.up],
@@ -286,7 +286,7 @@ const cabbagetalk = async () => {
 
 const openSceneBar = async (index) => {
   await waitWebChannel();
-  const sceneName = tabs.value[index]?.id || 'scene1';
+  const sceneName = tabs.value[index]?.id || 'MainScene';
   const routePath = `/SceneBar?sceneName=${sceneName}`;
   if (window.appService && typeof window.appService.add_dock_widget === 'function') {
     window.appService.add_dock_widget("SceneBar", routePath, "left", "None", JSON.stringify({width: 520, height: 640}));
@@ -295,7 +295,7 @@ const openSceneBar = async (index) => {
 
 const createScene = async () => {
   await waitWebChannel();
-  const payload = JSON.stringify({sceneName: tabs.value[activeTab.value]?.id || 'scene1'});
+  const payload = JSON.stringify({sceneName: tabs.value[activeTab.value]?.id || 'MainScene'});
   if (window.sceneService && typeof window.sceneService.create_scene === 'function') {
     window.sceneService.create_scene(payload);
   }

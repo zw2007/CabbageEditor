@@ -163,11 +163,11 @@ import {useDragResize} from '@/composables/useDragResize';
 import DockTitleBar from '@/components/DockTitleBar.vue'
 
 async function waitWebChannel() {
-  if (window.pyBridge || window.sceneService || window.appService || window.scriptingService) return true;
+  if (window.sceneService || window.appService || window.scriptingService) return true;
   if (window.webChannelReady) {
     try { await window.webChannelReady; } catch {}
   }
-  return !!(window.pyBridge || window.sceneService || window.appService || window.scriptingService);
+  return !!(window.sceneService || window.appService || window.scriptingService);
 }
 
 const {dragState, startDrag, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();
@@ -452,8 +452,8 @@ const handleBlockCreate = (event) => {
 };
 
 const UpdatePosition = () => {
-  if (window.pyBridge) {
-    window.pyBridge.actor_operation(JSON.stringify({
+  if (window.sceneService) {
+    window.sceneService.actor_operation(JSON.stringify({
       Operation: "Move",
       sceneName: scenename.value,
       x: parseFloat(px.value),
@@ -466,8 +466,8 @@ const UpdatePosition = () => {
 }
 
 const UpdateRotation = () => {
-  if (window.pyBridge) {
-    window.pyBridge.actor_operation(JSON.stringify({
+  if (window.sceneService) {
+    window.sceneService.actor_operation(JSON.stringify({
       Operation: "Rotate",
       sceneName: scenename.value,
       x: parseFloat(rx.value),
@@ -480,8 +480,8 @@ const UpdateRotation = () => {
 }
 
 const UpdateScale = () => {
-  if (window.pyBridge) {
-    window.pyBridge.actor_operation(JSON.stringify({
+  if (window.sceneService) {
+    window.sceneService.actor_operation(JSON.stringify({
       Operation: "Scale",
       sceneName: scenename.value,
       x: parseFloat(sx.value),
@@ -494,8 +494,8 @@ const UpdateScale = () => {
 }
 
 const CloseFloat = () => {
-  if (window.pyBridge) {
-    window.pyBridge.remove_dock_widget(routename.value);
+  if (window.sceneService) {
+    window.sceneService.remove_dock_widget(routename.value);
   }
 };
 

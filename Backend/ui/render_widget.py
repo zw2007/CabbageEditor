@@ -1,12 +1,12 @@
-import os
-from typing import Optional
-
-from PySide6.QtCore import QRect, Signal
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtCore import QRect, Signal, Qt
 from PySide6.QtWidgets import QWidget
 
-from ..utils.scene_manager import SceneManager
+from ..utils.engine_import import load_corona_engine
+from ..utils.scene import Scene
+from ..utils.camera import Camera
+from ..utils.scene_manager import SceneManager  # 新增导入
 
+CoronaEngine = load_corona_engine()
 
 class RenderWidget(QWidget):
     geometry_changed = Signal(QRect)
@@ -16,37 +16,28 @@ class RenderWidget(QWidget):
         self.Main_Window = Main_Window
 
         self.setGeometry(0, 0, self.Main_Window.width(), self.Main_Window.height())
-        self.setStyleSheet("QLabel {background-color: transparent;}")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet("background-color: #282C34;")
 
+        # 使用 SceneManager 创建/获取场景
+        self.scene_manager = SceneManager()  # 单例获取
+        self.scene = self.scene_manager.create_scene("MainScene", light_field=False)
+
+        # 创建相机并加入场景
         try:
-            import CoronaEngine
-            print("import CoronaEngine")
-        except ImportError:
-            from ..corona_engine_fallback import CoronaEngine
-
-        self.engine_scene = CoronaEngine.Scene(int(self.winId()), False)
-
-        try:
-            self.scene_wrapper = SceneManager().create_scene("mainscene", engine_scene=self.engine_scene)
+            self.camera = Camera(
+                position=[10.0, 10.0, 0.0],
+                forward=[-1.0, -1.0, -1.0],
+                world_up=[0.0, 1.0, 0.0],
+                fov=45.0,
+                name="MainCamera"
+            )
+            self.camera.set_surface(int(self.winId()))
+            self.scene.add_camera(self.camera)
         except Exception as e:
-            print(f"Failed to register mainscene with SceneManager: {e}")
-            self.scene_wrapper = None
+            print(f"[RenderWidget] Failed to create or setup camera: {e}")
+            self.camera = None
 
-        if self.scene_wrapper is not None:
-            try:
-                self.scene_wrapper.set_camera(
-                    [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
-                )
-            except Exception as e:
-                print(f"Failed to set camera on scene_wrapper: {e}")
-        else:
-
-            try:
-                self.engine_scene.setCamera(
-                    [10.0, 10.0, 0.0], [-1.0, -1.0, -1.0], [0.0, 1.0, 0.0], 45.0
-                )
-            except Exception:
-                pass
-
-    def scene(self):
-        return self.winId()
+    def get_scene(self) -> Scene:
+        """返回当前渲染使用的场景对象"""
+        return self.scene
