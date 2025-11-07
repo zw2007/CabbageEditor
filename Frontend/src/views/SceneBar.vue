@@ -102,7 +102,7 @@
                     </button>
                   </div>
                   <span class="text-xs text-gray-500 truncate" :title="scene.path">
-                    {{ scene.type === 'obj' ? 'OBJ模型' : '其他类型' }}
+                    {{ FileTypeLabel(scene.type) }}
                   </span>
                 </div>
               </div>
@@ -125,6 +125,17 @@ async function waitWebChannel() {
   if (window.webChannelReady) { try { await window.webChannelReady; } catch {} }
   return !!(window.appService || window.sceneService || window.projectService);
 }
+
+const FileTypeLabel = (type) => {
+  const lowerType = type.toLowerCase();
+  if (['obj', 'fbx', 'dae'].includes(lowerType)) {
+    return `3D模型文件 (*.${lowerType})`;
+  }
+  if (['mp4', 'avi', 'mov', 'mp3', 'wav'].includes(lowerType)) {
+    return `多媒体文件 (*.${lowerType})`;
+  }
+  return '其他类型';
+};
 
 const {
   resizeState,

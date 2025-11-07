@@ -27,7 +27,8 @@ class ProjectService(QObject):
                 try:
                     actor_data = Actor(file_path)
                     scene.add_actor(actor_data)
-                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data.name, "path": file_path}))
+                    file_extension = file_path.split('.')[-1].lower()
+                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data.name, "path": file_path, "type": file_extension}))
                 except Exception as e:
                     print(f"创建角色失败: {str(e)}")
         elif file_type == "scene":
@@ -53,7 +54,8 @@ class ProjectService(QObject):
             if file_path:
                 try:
                     actor_data = scene.add_actor(file_path)
-                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data["name"], "path": file_path}))
+                    file_extension = file_path.split('.')[-1].lower()
+                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data["name"], "path": file_path, "type": file_extension}))
                 except Exception as e:
                     print(f"多媒体导入失败: {str(e)}")
 
