@@ -80,7 +80,7 @@ class SceneService(QObject):
     def camera_move(self, data: str) -> None:
         try:
             move_data = json.loads(data)
-            scene_name = move_data.get("sceneName", "scene1")
+            scene_name = move_data.get("sceneName", "MainScene")
             position = move_data.get("position", [0.0, 5.0, 10.0])
             forward = move_data.get("forward", [0.0, 1.5, 0.0])
             up = move_data.get("up", [0.0, -1.0, 0.0])
@@ -97,7 +97,7 @@ class SceneService(QObject):
     def sun_direction(self, data: str) -> None:
         try:
             sun_data = json.loads(data)
-            scene_name = sun_data.get("sceneName", "scene1")
+            scene_name = sun_data.get("sceneName", "MainScene")
             px = float(sun_data.get("px", 1.0))
             py = float(sun_data.get("py", 1.0))
             pz = float(sun_data.get("pz", 1.0))

@@ -45,7 +45,7 @@ def call_actor_operation(scene_name: str, actor_name: str, operation: str, x: fl
 
 @app.tool()
 async def transform_actor(actor_name: str, operation: str, x: float, y: float, z: float,
-                          scene_name: str = "scene1") -> str:
+                          scene_name: str = "MainScene") -> str:
     """
     Apply a transformation (Move/Rotate/Scale) to the  actor in the  scene.
 
@@ -55,7 +55,7 @@ async def transform_actor(actor_name: str, operation: str, x: float, y: float, z
         x: X value
         y: Y value
         z: Z value
-        scene_name: Name of the scene,默认为scene1
+        scene_name: Name of the scene,默认为MainScene
     """
     try:
         return call_actor_operation(scene_name, actor_name, operation, x, y, z)

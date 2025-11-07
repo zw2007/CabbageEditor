@@ -18,6 +18,7 @@ class SceneManager:
             scene = Scene(name=scene_name, light_field=light_field)
             self.scenes[scene_name] = scene
             print(f"all scenes:{self.scenes}")
+        print(f"all scenes:{self.scenes}")
         return self.scenes[scene_name]
 
     def get_scene(self, scene_name: str) -> Optional[Scene]:

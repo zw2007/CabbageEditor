@@ -50,6 +50,7 @@ class Scene:
 
         # 添加到本地列表
         self._actors.append(actor)
+        print(self._actors)
 
         # 调用 C++ API：scene.add_actor(actor)
         if hasattr(self.engine_scene, 'add_actor'):

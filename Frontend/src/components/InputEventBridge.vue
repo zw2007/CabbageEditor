@@ -10,7 +10,7 @@ import {useRoute} from 'vue-router'
 // 组件属性：用于启用/禁用和场景信息（如：scene）
 const props = defineProps({
   enabled: {type: Boolean, default: true}, // 是否启用输入事件捕获
-  sceneName: {type: String, default: 'scene1'}, // 场景名称
+  sceneName: {type: String, default: 'MainScene'}, // 场景名称
 })
 
 const route = useRoute()
