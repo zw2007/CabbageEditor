@@ -13,56 +13,59 @@
 
     <!-- 主内容区域 -->
     <div class="p-4 shadow-md w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 56px);">
-      <div class="flex flex-wrap gap-2 mb-4">
-        <div class="relative">
-          <button @click.stop="ToggleModelDropdown"
-                  class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200 flex items-center">
-            导入
-            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                 xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          <div v-if="ShowModelDropdown"
-               v-click-outside="CloseModelDropdown"
-               class="absolute z-10 mt-1 w-40 bg-[#a8a4a3]/65 rounded-md shadow-lg">
-            <div class="py-1">
-              <button @click.stop="HandleFileImport"
-                      class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
-                导入模型
-              </button>
-              <button @click.stop="HandleSceneImport"
-                      class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
-                导入场景
-              </button>
-              <button @click.stop="HandleMultimediaImport"
-                      class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
-                导入多媒体
-              </button>
+      <div class="flex flex-col gap-2 mb-4">
+        <div class="flex gap-2">
+          <div class="relative">
+            <button @click.stop="ToggleModelDropdown"
+                    class="w-24 justify-center px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200 flex items-center">
+              导入
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                   xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div v-if="ShowModelDropdown"
+                 v-click-outside="CloseModelDropdown"
+                 class="absolute z-10 mt-1 w-40 bg-[#a8a4a3]/65 rounded-md shadow-lg">
+              <div class="py-1">
+                <button @click.stop="HandleFileImport"
+                        class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
+                  模型
+                </button>
+                <button @click.stop="HandleSceneImport"
+                        class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
+                  场景
+                </button>
+                <button @click.stop="HandleMultimediaImport"
+                        class="block w-full px-4 py-2 text-sm text-white hover:bg-gray-600 hover:text-gray-900 text-left">
+                  多媒体
+                </button>
+              </div>
             </div>
           </div>
+          <button @click.stop="ImportLightSource"
+                  class="w-24 flex items-center justify-center px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+            光源
+          </button>
+          <button @click.stop="ImportCamera"
+                  class="w-24 flex items-center justify-center px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+            摄像头
+          </button>
         </div>
-
-        <button @click.stop="ImportLightSource"
-                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          光源
-        </button>
-        <button @click.stop="ImportCamera"
-                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          摄像头
-        </button>
-        <button @click.stop="SaveScene"
-                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          保存场景
-        </button>
-         <button @click.stop="ToggleRecording"
-                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          {{ recording ? '暂停录制' : '开始录制' }}
-        </button>
-        <button @click.stop="DayNightCycle"
-                class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
-          昼夜变换
-        </button>
+        <div class="flex gap-2">
+          <button @click.stop="SaveScene"
+                  class="w-24 flex items-center justify-center px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+            保存场景
+          </button>
+          <button @click.stop="ToggleRecord"
+                  class="w-24 flex items-center justify-center px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+            {{ recording ? '暂停录制' : '开始录制' }}
+          </button>
+          <button @click.stop="DayNightCycle"
+                  class="w-24 flex items-center justify-center px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors duration-200">
+            昼夜变换
+          </button>
+        </div>
       </div>
       <div class="flex items-center justify-between gap-2 mb-4">
         <label class="text-write whitespace-nowrap">光照方向：</label>
@@ -179,12 +182,12 @@ const ToggleModelDropdown = () => {
 // 导入光源
 const ImportLightSource = async () => {
   ShowModelDropdown.value = false;
-  console.warn('ImportLightSource 未实现专用服务，保留原行为');
+  console.warn('ImportLightSource 模型未添加');
 };
 // 导入摄像头
 const ImportCamera = async () => {
   ShowModelDropdown.value = false;
-  console.warn('ImportCamera 未实现专用服务，保留原行为');
+  console.warn('ImportCamera 模型未添加');
 };
 
 const HandleFileImport = async () => {
@@ -209,6 +212,11 @@ const HandleSceneImport = async () => {
     window.projectService.open_file_dialog(currentSceneName.value, 'scene');
   }
 };
+
+//录制视频具体功能待弄
+// const ToggleRecord = async () => {
+  
+// };
 
 // 监听 sceneService 信号（替代 pyBridge.dock_event）
 function onActorCreated(event_data) {
