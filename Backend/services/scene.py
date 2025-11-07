@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 from PySide6.QtCore import QObject, Signal, Slot
 from Backend.utils.scene_manager import SceneManager
+from Backend.utils.actor import Actor
 
 
 class SceneService(QObject):
@@ -19,12 +20,13 @@ class SceneService(QObject):
         if not scene:
             print(f"场景 '{scene_name}' 不存在，无法创建角色")
             return
-        actor_data = scene.add_actor(obj_path)
+        actor = Actor(obj_path)
+        scene.add_actor(actor)
         try:
-            self.actor_created.emit(json.dumps({"name": actor_data["name"], "path": obj_path}))
+            self.actor_created.emit(json.dumps({"name": actor.name, "path": obj_path}))
         except Exception:
             pass
-        print("角色创建成功:", actor_data["name"])
+        print("角色创建成功:", actor.name)
 
     @Slot(str)
     def create_scene(self, data: str) -> None:
@@ -48,7 +50,7 @@ class SceneService(QObject):
         if not actor:
             print(f"角色 '{actor_name}' 不存在，无法删除")
             return
-        scene.remove_actor(actor_name)
+        scene.remove_actor(actor)
         print(f"角色 '{actor_name}' 已从场景 '{scene_name}' 中删除")
 
     @Slot(str)

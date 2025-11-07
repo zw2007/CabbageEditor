@@ -165,6 +165,27 @@ class Scene:
         """获取场景中所有 Actor"""
         return self._actors.copy()
 
+    def get_actor(self, key: Optional[Any]) -> Optional[Actor]:
+        """获取单个 Actor。
+        参数 key 支持：
+        - str: 按名称匹配（actor.name）
+        - int: 按索引（越界返回 None）
+        - None: 返回 None（如需全部请用 get_actors）
+        """
+        if key is None:
+            return None
+        if isinstance(key, int):
+            if 0 <= key < len(self._actors):
+                return self._actors[key]
+            return None
+        if isinstance(key, str):
+            for a in self._actors:
+                if a.name == key:
+                    return a
+            return None
+        # 不支持的类型
+        return None
+
     def get_cameras(self) -> List[Camera]:
         """获取场景中所有 Camera"""
         return self._cameras.copy()
@@ -209,7 +230,3 @@ class Scene:
             "cameras": [camera.to_dict() for camera in self._cameras],
             "lights": [light.to_dict() for light in self._lights],
         }
-
-
-
-

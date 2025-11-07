@@ -64,11 +64,11 @@ const messages = ref([
 const userInput = ref('');
 
 async function waitWebChannel() {
-  if (window.pyBridge || window.aiService || window.appService) return true;
+  if (window.aiService || window.appService) return true;
   if (window.webChannelReady) {
     try { await window.webChannelReady; } catch {}
   }
-  return !!(window.pyBridge || window.aiService || window.appService);
+  return !!(window.aiService || window.appService);
 }
 
 const SendMessageToAI = async (query) => {
