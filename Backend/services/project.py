@@ -3,6 +3,7 @@ import json
 from PySide6.QtCore import QObject, Signal, Slot
 from Backend.utils.file_handle import FileHandler
 from .scene import SceneService
+from ..utils.actor import Actor
 
 
 class ProjectService(QObject):
@@ -24,8 +25,9 @@ class ProjectService(QObject):
             _, file_path = self.file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
             if file_path:
                 try:
-                    actor_data = scene.add_actor(file_path)
-                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data["name"], "path": file_path}))
+                    actor_data = Actor(file_path)
+                    scene.add_actor(actor_data)
+                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data.name, "path": file_path}))
                 except Exception as e:
                     print(f"创建角色失败: {str(e)}")
         elif file_type == "scene":
@@ -34,13 +36,14 @@ class ProjectService(QObject):
                 try:
                     scene_data = json.loads(content)
                     actors = []
-                    for actor_name in list(scene.list_actor_names()):
-                        scene.remove_actor(actor_name)
+                    # for actor_name in list(scene.list_actor_names()):
+                    #     scene.remove_actor(actor_name)
                     for actor in scene_data.get("actors", []):
                         path = actor.get("path")
                         if path:
-                            actor_data = scene.add_actor(path)
-                            actors.append({"name": actor_data["name"], "path": path})
+                            actor_data = Actor(path)
+                            scene.add_actor(actor_data)
+                            actors.append({"name": actor_data.name, "path": path})
                     self.scene_loaded.emit(json.dumps({"actors": actors}))
                 except Exception as e:
                     print(f"加载场景失败: {str(e)}")
