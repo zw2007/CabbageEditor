@@ -27,7 +27,8 @@ class ProjectService(QObject):
                 try:
                     actor_data = Actor(file_path)
                     scene.add_actor(actor_data)
-                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data.name, "path": file_path}))
+                    file_extension = file_path.split('.')[-1].lower()
+                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data.name, "path": file_path, "type": file_extension}))
                 except Exception as e:
                     print(f"创建角色失败: {str(e)}")
         elif file_type == "scene":
@@ -48,6 +49,15 @@ class ProjectService(QObject):
                 except Exception as e:
                     print(f"加载场景失败: {str(e)}")
                     self.scene_service.scene_error.emit(json.dumps({"type": "error", "message": str(e)}))
+        elif file_type == "multimedia":
+            _, file_path = self.file_handler.open_file("选择多媒体文件", "多媒体文件 (*.mp4 *.avi *.mov *.mp3 *.wav)")
+            if file_path:
+                try:
+                    actor_data = scene.add_actor(file_path)
+                    file_extension = file_path.split('.')[-1].lower()
+                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data["name"], "path": file_path, "type": file_extension}))
+                except Exception as e:
+                    print(f"多媒体导入失败: {str(e)}")
 
     @Slot(str)
     def scene_save(self, data: str) -> None:

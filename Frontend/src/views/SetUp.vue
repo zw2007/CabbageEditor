@@ -102,35 +102,6 @@ const Archive = () => {
   }
 }
 
-//   const HandleEvent = (event_type, event_data) => {
-//   if (event_type === 'actorCreated') {
-//     try {
-//       const data = JSON.parse(event_data);
-//       // 使用后端返回的数据创建场景项
-//       sceneImages.value.push({
-//         name: data.name,         // 使用返回的名称
-//         path: data.path,         // 使用返回的完整路径
-//         type: 'obj'
-//       });
-//     } catch (error) {
-//       console.error('处理Actor创建响应失败:', error);
-//     }
-//   } else if (event_type === 'sceneLoaded') {
-//     try {
-//       const data = JSON.parse(event_data);
-//       if (data.actors && Array.isArray(data.actors)) {
-//         sceneImages.value = data.actors.map(actor => ({
-//           name: actor.path.split('/').pop().split('.')[0], 
-//           path: actor.path,
-//           type: 'obj'
-//         }));
-//       }
-//     } catch (error) {
-//       console.error('处理场景加载响应失败:', error);
-//     }
-//   }
-// };
-
 const GoWelcome = () => {
   window.pyBridge.send_message_to_main("go_home", "");
   window.pyBridge.remove_dock_widget("Pet");
