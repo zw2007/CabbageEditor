@@ -4,23 +4,11 @@ from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtCore import QObject
 
-# 直接在此维护 SceneManager 单例，避免依赖 Bridge
-from .scene_manager import SceneManager
-
 
 class WebChannelContext:
     def __init__(self, channel: QWebChannel, services=None) -> None:
         self.channel = channel
         self.services = services or {}
-
-
-_scene_manager_singleton = None
-
-def _get_scene_manager():
-    global _scene_manager_singleton
-    if _scene_manager_singleton is None:
-        _scene_manager_singleton = SceneManager()
-    return _scene_manager_singleton
 
 
 def setup_webchannel_for_view(
@@ -46,7 +34,7 @@ def setup_webchannel_for_view(
             from Backend.services.project import ProjectService
             from Backend.services.app import AppService
 
-            scene_service = SceneService(_get_scene_manager(), None)
+            scene_service = SceneService(None)
             ai_service = AIService(None)
             scripting_service = ScriptingService(None)
             project_service = ProjectService(scene_service, None)

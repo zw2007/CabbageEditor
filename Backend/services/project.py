@@ -1,73 +1,77 @@
 from __future__ import annotations
 import json
 from PySide6.QtCore import QObject, Signal, Slot
+
+from Backend.application.bootstrap import bootstrap
+from Backend.application.services.project_service import ProjectApplicationService
+from Backend.shared.container import get_container
 from Backend.utils.file_handle import FileHandler
 from .scene import SceneService
-from ..utils.actor import Actor
+
+bootstrap()
 
 
 class ProjectService(QObject):
     scene_saved = Signal(str)
     scene_loaded = Signal(str)
 
-    def __init__(self, scene_service: SceneService, parent: QObject | None = None) -> None:
+    def __init__(self, scene_service: SceneService | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        container = get_container()
+        self.project_service: ProjectApplicationService = container.resolve("project_service")
         self.scene_service = scene_service
         self.file_handler = FileHandler()
 
+    def _emit_actor_created(self, payload: str) -> None:
+        if not self.scene_service:
+            return
+        try:
+            data = json.loads(payload)
+            actor = data.get("actor")
+            if not actor:
+                return
+            message = json.dumps(
+                {
+                    "name": actor.get("name"),
+                    "path": actor.get("path"),
+                    "type": actor.get("type"),
+                }
+            )
+            self.scene_service.actor_created.emit(message)
+        except Exception:
+            pass
+
     @Slot(str, str)
     def open_file_dialog(self, scene_name: str, file_type: str = "model") -> None:
-        scene = self.scene_service.scene_manager.get_scene(scene_name)
-        if not scene:
-            print(f"场景 {scene_name} 不存在，无法加载资源")
-            return
-        if file_type == "model":
-            _, file_path = self.file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
-            if file_path:
-                try:
-                    actor_data = Actor(file_path)
-                    scene.add_actor(actor_data)
-                    file_extension = file_path.split('.')[-1].lower()
-                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data.name, "path": file_path, "type": file_extension}))
-                except Exception as e:
-                    print(f"创建角色失败: {str(e)}")
-        elif file_type == "scene":
-            content, file_path = self.file_handler.open_file("选择场景文件", "场景文件 (*.json)")
-            if file_path and content:
-                try:
-                    scene_data = json.loads(content)
-                    actors = []
-                    # for actor_name in list(scene.list_actor_names()):
-                    #     scene.remove_actor(actor_name)
-                    for actor in scene_data.get("actors", []):
-                        path = actor.get("path")
-                        if path:
-                            actor_data = Actor(path)
-                            scene.add_actor(actor_data)
-                            actors.append({"name": actor_data.name, "path": path})
-                    self.scene_loaded.emit(json.dumps({"actors": actors}))
-                except Exception as e:
-                    print(f"加载场景失败: {str(e)}")
-                    self.scene_service.scene_error.emit(json.dumps({"type": "error", "message": str(e)}))
-        elif file_type == "multimedia":
-            _, file_path = self.file_handler.open_file("选择多媒体文件", "多媒体文件 (*.mp4 *.avi *.mov *.mp3 *.wav)")
-            if file_path:
-                try:
-                    actor_data = scene.add_actor(file_path)
-                    file_extension = file_path.split('.')[-1].lower()
-                    self.scene_service.actor_created.emit(json.dumps({"name": actor_data["name"], "path": file_path, "type": file_extension}))
-                except Exception as e:
-                    print(f"多媒体导入失败: {str(e)}")
+        try:
+            if file_type == "model":
+                _, file_path = self.file_handler.open_file("选择模型文件", "3D模型文件 (*.obj *.fbx *.dae)")
+                if file_path:
+                    payload = self.project_service.import_model(scene_name, file_path)
+                    self.scene_loaded.emit(payload)
+                    self._emit_actor_created(payload)
+            elif file_type == "scene":
+                content, file_path = self.file_handler.open_file("选择场景文件", "场景文件 (*.json)")
+                if file_path and content:
+                    payload = self.project_service.import_scene_file(scene_name, content)
+                    self.scene_loaded.emit(payload)
+            elif file_type == "multimedia":
+                _, file_path = self.file_handler.open_file("选择多媒体文件", "多媒体文件 (*.mp4 *.avi *.mov *.mp3 *.wav)")
+                if file_path:
+                    payload = self.project_service.import_model(scene_name, file_path)
+                    self.scene_loaded.emit(payload)
+                    self._emit_actor_created(payload)
+        except Exception as exc:
+            self.scene_loaded.emit(json.dumps({"status": "error", "message": str(exc)}))
 
     @Slot(str)
     def scene_save(self, data: str) -> None:
         try:
-            scene_data = json.loads(data)
-            content = json.dumps(scene_data, indent=4)
+            payload = json.loads(data)
+            content = json.dumps(payload, indent=2)
             save_path = self.file_handler.save_file(content, "保存场景文件", "场景文件 (*.json)")
-            status = {"status": "success", "filepath": save_path} if save_path else {"status": "error",
-                                                                                     "filepath": save_path}
+            status = {"status": "success", "filepath": save_path} if save_path else {"status": "error", "filepath": save_path}
             self.scene_saved.emit(json.dumps(status))
-        except Exception as e:
-            print(f"[ERROR] 保存场景失败: {str(e)}")
+        except Exception as exc:
+            self.scene_saved.emit(json.dumps({"status": "error", "message": str(exc)}))
 

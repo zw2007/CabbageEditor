@@ -1,29 +1,28 @@
-# Backend 说明
+# Backend（refactored）
 
-本目录包含编辑器后端（PySide6 + QtWebEngine）代码，采用“服务化 + 薄桥”架构：
+新的后端遵循「配置 → 领域 → 应用 → 接口」分层，保证可维护性：
 
-- ui/
-  - browser_widget.py：主 Web 容器，负责 Dock 创建/销毁与 WebChannel 接线
-  - dock_widget.py：Dock 容器，处理拖拽/缩放事件
-- utils/
-  - webchannel_helper.py：统一注册/清理 WebChannel 与服务对象
-  - bridge.py：后端信号/槽聚合点，优先委托至服务对象
-  - app_service.py / scene_service.py / project_service.py / scripting_service.py / ai_service.py：领域服务
-  - central_manager.py：Dock 注册表
-  - 其它：scene_manager.py / scene.py / engine_object_factory.py 等
+- `config/`：集中式配置与密钥（`settings.py`, `secrets.py`, `defaults.toml`）
+- `core/`：纯领域模型（Scene/Actor/Conversation 等）
+- `application/`：用例服务（Scene/Project/AI），通过 `application/bootstrap.py` 注册到全局容器
+- `infrastructure/`：与外界交互（Qt WebChannel、LLM/MCP、文件系统等）
+- `interfaces/`：运行入口（Qt、MCP Server、CLI 工具）
+- legacy `ui/`、`services/`、`utils/` 继续存在，但它们现在只是一层适配器，全部委托给 application 服务
 
-运行方式：
-- 先构建 Frontend 的 dist 目录
-- 运行 Backend/main.py
+## 运行方式
+1. 构建前端 `Frontend/dist`
+2. `python -m Backend.interfaces.cli.secrets`（可选，初始化 `~/.coronaengine/credentials.toml`）
+3. `python Backend/main.py`
 
-环境变量（默认关闭 GPU 与使用软件渲染，可按需调整）：
-- QTWEBENGINE_DISABLE_GPU=1
-- QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --disable-gpu-compositing --enable-logging=stderr
-- QT_QUICK_BACKEND=software
-- QT_OPENGL=software
-- QT_DISABLE_DIRECT_COMPOSITION=1
+`Backend/main.py` 会读取 `config/settings.py`，自动设置 Qt 渲染参数并完成依赖注入。  
+WebChannel 的契约文档见 `docs/backend_interface.md`。
 
-说明：
-- 不再暴露 pyBridge；前端通过 appService/sceneService/... 访问后端功能
-- Dock 拖拽/缩放事件通过 appService.send_message_to_dock 传递，负载需携带 routename
+## 关键特性
+- **统一密钥管理**：环境变量 > 用户级 `~/.coronaengine/credentials.toml` > 模板文件
+- **LLM + MCP**：`LLMClient` 通过 `MCPToolAdapter` 自动列举并调用 `TransformMCP` 工具
+- **可测试的领域层**：`SceneRepository`、`Conversation` 等与 Qt/文件系统完全解耦
+- **前端接口清晰**：`sceneService/projectService/aiService/...` 的输入输出均为结构化 JSON，详见文档
+
+## 环境变量
+默认禁用 GPU，如需开启可设置 `CORONA_ENABLE_GPU=true`；其它变量（模型、日志等级等）在 `config/defaults.toml`。
 

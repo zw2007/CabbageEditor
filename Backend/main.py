@@ -3,51 +3,59 @@ import sys
 import importlib.util
 import glob
 import queue
+from pathlib import Path
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
-os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
-os.environ["QT_QUICK_BACKEND"] = "software"
-os.environ['QT_OPENGL'] = 'software'
-os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
-_cleaned_up = False
+from Backend.application.bootstrap import bootstrap
+from Backend.config.settings import get_settings
 
-from Backend.ui import main_window
+settings = get_settings()
+if not settings.enable_gpu:
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
+    os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
+    os.environ["QT_QUICK_BACKEND"] = "software"
+    os.environ['QT_OPENGL'] = 'software'
+    os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
 
-# 初始化 Qt 应用与主窗口
+sys.path.append(str(settings.paths.repo_root))
+
+bootstrap()
+
+from Backend.ui import main_window  # noqa: E402
+
 app, window = main_window.init_app()
 msg_queue = queue.Queue()
+_cleaned_up = False
 
 
 def cleanup_blockly_files():
     """删除上次运行残留的 blockly 脚本与入口文件，避免热更新时导入冲突。"""
     global _cleaned_up
-    try:
-        if _cleaned_up:
-            return
+    if _cleaned_up:
+        return
 
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        runscript_path = os.path.join(current_dir, 'runScript.py')
-        if os.path.exists(runscript_path):
+    current_dir = Path(__file__).parent
+    runscript_path = current_dir / 'runScript.py'
+    if runscript_path.exists():
+        try:
+            runscript_path.unlink()
+            print(f"已删除: {runscript_path}")
+        except PermissionError:
+            print(f"无法删除 {runscript_path}，文件可能被占用")
+
+    script_dir = current_dir / 'script'
+    if script_dir.exists():
+        for file in glob.glob(str(script_dir / 'blockly_code*.py')):
             try:
-                os.remove(runscript_path)
-                print(f"已删除: {runscript_path}")
+                Path(file).unlink()
+                print(f"已删除: {file}")
             except PermissionError:
-                print(f"无法删除 {runscript_path}，文件可能被占用")
+                print(f"无法删除 {file}，文件可能被占用")
 
-        script_dir = os.path.join(current_dir, 'script')
-        if os.path.exists(script_dir):
-            for file in glob.glob(os.path.join(script_dir, 'blockly_code*.py')):
-                try:
-                    os.remove(file)
-                    print(f"已删除: {file}")
-                except PermissionError:
-                    print(f"无法删除 {file}，文件可能被占用")
-
-        _cleaned_up = True
-    except Exception as e:
-        print(f"清理Blockly文件时出错: {str(e)}")
+    _cleaned_up = True
 
 
 def run(isReload):
@@ -56,7 +64,7 @@ def run(isReload):
     if not _cleaned_up:
         cleanup_blockly_files()
 
-    if (isReload):
+    if isReload:
         for module_name in list(sys.modules.keys()):
             if 'runScript' in module_name or 'script' in module_name:
                 del sys.modules[module_name]
