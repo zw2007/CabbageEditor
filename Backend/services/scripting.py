@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import json
 from PySide6.QtCore import QObject, Signal, Slot
-from Backend.utils.static_components import root_dir
+from Backend.config.settings import get_settings
 
 
 class ScriptingService(QObject):
@@ -10,7 +10,8 @@ class ScriptingService(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self.script_dir = os.path.join(root_dir, "CabbageEditor", "Backend", "script")
+        settings = get_settings()
+        self.script_dir = str(settings.paths.script_dir)
         os.makedirs(self.script_dir, exist_ok=True)
 
     @Slot(str, int)

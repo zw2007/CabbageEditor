@@ -2,7 +2,6 @@ from typing import Dict, List, Any, Optional
 from .actor import Actor
 from .camera import Camera
 from .light import Light
-import os
 
 
 class Scene:
@@ -159,6 +158,27 @@ class Scene:
 
         if hasattr(self.engine_scene, 'set_sun_direction'):
             self.engine_scene.set_sun_direction(direction)
+
+    def set_camera(self, position: List[float], forward: List[float], up: List[float], fov: float) -> None:
+        """
+        设置默认相机参数，如果不存在则自动创建
+        """
+        camera = None
+        for cam in self._cameras:
+            if cam.name == "MainCamera":
+                camera = cam
+                break
+        if camera is None:
+            camera = Camera(name="MainCamera")
+            self.add_camera(camera)
+
+        try:
+            camera.set_position(position)
+            camera.set_forward(forward)
+            camera.set_world_up(up)
+            camera.set_fov(fov)
+        except Exception as exc:
+            raise RuntimeError(f"Failed to update camera: {exc}") from exc
 
     # 查询方法
     def get_actors(self) -> List[Actor]:

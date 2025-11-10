@@ -2,7 +2,19 @@ from __future__ import annotations
 import json
 import time
 from PySide6.QtCore import QObject, Signal, Slot, QThread
-from Backend.mcp_client import qa_one_sync
+
+from Backend.application.bootstrap import bootstrap
+from Backend.application.services.ai_service import AIApplicationService
+from Backend.shared.container import get_container
+
+bootstrap()
+
+
+def _format_exception(exc: BaseException) -> str:
+    if isinstance(exc, BaseExceptionGroup):
+        parts = [_format_exception(sub) for sub in exc.exceptions]
+        return "; ".join(filter(None, parts))
+    return str(exc) or exc.__class__.__name__
 
 
 class WorkerThread(QThread):
@@ -18,9 +30,16 @@ class WorkerThread(QThread):
         try:
             result = self.func(*self.args, **self.kwargs)
             self.result_ready.emit(result)
-        except Exception as e:
-            # 保持静默，避免线程异常打断 UI；必要时可加日志
-            pass
+        except BaseException as exc:
+            error_payload = json.dumps(
+                {
+                    "type": "error",
+                    "content": _format_exception(exc),
+                    "status": "error",
+                    "timestamp": int(time.time()),
+                }
+            )
+            self.result_ready.emit(error_payload)
 
 
 class AIService(QObject):
@@ -28,6 +47,8 @@ class AIService(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        container = get_container()
+        self.ai_service: AIApplicationService = container.resolve("ai_service")
         self._workers: set[WorkerThread] = set()
 
     @Slot(str)
@@ -36,22 +57,16 @@ class AIService(QObject):
             try:
                 msg_data = json.loads(ai_message)
                 query = msg_data.get("message", "")
-                response_text = qa_one_sync(query=query)
-                final_response = {
-                    "type": "ai_response",
-                    "content": response_text,
-                    "status": "success",
-                    "timestamp": int(time.time()),
-                }
-                return json.dumps(final_response)
-            except Exception as e:
-                error_response = {
-                    "type": "error",
-                    "content": str(e),
-                    "status": "error",
-                    "timestamp": int(time.time()),
-                }
-                return json.dumps(error_response)
+                return self.ai_service.ask(query)
+            except BaseException as exc:
+                return json.dumps(
+                    {
+                        "type": "error",
+                        "content": _format_exception(exc),
+                        "status": "error",
+                        "timestamp": int(time.time()),
+                    }
+                )
 
         worker = WorkerThread(ai_work, parent=self)
         worker.result_ready.connect(self.ai_response.emit)

@@ -1,1 +1,66 @@
-*
+# ------------------------------
+# Common Python artifacts
+# ------------------------------
+*/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*/package-lock.json
+
+# ------------------------------
+# Virtual environments
+# ------------------------------
+.venv/
+venv/
+ENV/
+Env/
+env/
+.python-version
+.tox/
+
+# ------------------------------
+# Logs & temp files
+# ------------------------------
+*.log
+*.tmp
+*.swp
+
+# ------------------------------
+# OS / Editor junk
+# ------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+
+# ------------------------------
+# Node / Frontend build output
+# ------------------------------
+node_modules/
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+Frontend/.cache/
+
+# ------------------------------
+# Generated scripts/assets
+# ------------------------------
+Backend/script/blockly_code*.py
+Backend/runScript.py
+Backend/__pycache__/
+
+# ------------------------------
+# Local secrets / backups
+# ------------------------------
+Backend/mcp_client_secrets.json
+Backend_legacy/
