@@ -1,5 +1,5 @@
 <template>
-  <div class="relative min-w-[300px] rounded-md border-2 border-[#84a65b] bg-black/70">
+  <div class="relative min-w-[300px] min-h-screen border-2 border-[#84a65b] bg-black/70">
     <!-- 标题栏 -->
     <div class="titlebar flex items-center w-full cursor-move select-none justify-between rounded-t-md bg-black p-2">
       <div class="w-auto whitespace-nowrap font-medium text-white">设置</div>

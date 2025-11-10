@@ -1,6 +1,6 @@
 <template>
-  <div class="border-2 border-[#84a65b] rounded-md relative">
-    <DockTitleBar title="场景" extraClass="bg-[#84A65B] rounded-t-md" @close="CloseFloat" />
+  <div class="border-2 border-[#84a65b] min-h-screen relative">
+    <DockTitleBar title="场景" extraClass="bg-[#84A65B] rounded-t-md" @close="CloseFloat"/>
     <!-- 四周拖动边框 -->
     <div class="absolute top-0 left-0 w-full h-2 cursor-n-resize z-40" @mousedown="(e) => startResize(e, 'n')"></div>
     <div class="absolute bottom-0 left-0 w-full h-2 cursor-s-resize z-40" @mousedown="(e) => startResize(e, 's')"></div>
@@ -12,7 +12,7 @@
     <div class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-40" @mousedown="(e) => startResize(e, 'se')"></div>
 
     <!-- 主内容区域 -->
-    <div class="p-4 shadow-md w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 56px);">
+    <div class="p-4 shadow-md w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 48px);">
       <div class="flex flex-col gap-2 mb-4">
         <div class="flex gap-2">
           <div class="relative">
@@ -118,11 +118,16 @@
 import {ref, onMounted, onUnmounted} from 'vue';
 import {useRoute} from 'vue-router';
 import {useDragResize} from '@/composables/useDragResize';
-import DockTitleBar from '@/components/DockTitleBar.vue'
+import DockTitleBar from '@/components/DockTitleBar.vue';
 
 async function waitWebChannel() {
   if (window.appService || window.sceneService || window.projectService) return true;
-  if (window.webChannelReady) { try { await window.webChannelReady; } catch {} }
+  if (window.webChannelReady) {
+    try {
+      await window.webChannelReady;
+    } catch {
+    }
+  }
   return !!(window.appService || window.sceneService || window.projectService);
 }
 
@@ -157,7 +162,10 @@ const ControlObject = async (scene) => {
   const widgetName = `Object_${scene.name}`;
   const routePath = `/Object?sceneName=${currentSceneName.value}&objectName=${scene.name}&path=${encodeURIComponent(scene.path)}&routename=${widgetName}`;
   if (window.appService && typeof window.appService.add_dock_widget === 'function') {
-    window.appService.add_dock_widget(widgetName, routePath, "right", "None", JSON.stringify({width: 520, height: 640}));
+    window.appService.add_dock_widget(widgetName, routePath, "right", "None", JSON.stringify({
+      width: 520,
+      height: 640
+    }));
   }
 };
 
@@ -177,7 +185,7 @@ const UpdateSunPosition = async () => {
 const SaveScene = async () => {
   await waitWebChannel();
   const sceneData = {
-    actors: sceneImages.value.map(scene => ({ name: scene.name, path: scene.path, type: scene.type }))
+    actors: sceneImages.value.map(scene => ({name: scene.name, path: scene.path, type: scene.type}))
   };
   const payload = JSON.stringify(sceneData);
   if (window.projectService && typeof window.projectService.scene_save === 'function') {
@@ -226,7 +234,7 @@ const HandleSceneImport = async () => {
 
 //录制视频具体功能待弄
 // const ToggleRecord = async () => {
-  
+
 // };
 
 // 监听 sceneService 信号（替代 pyBridge.dock_event）
@@ -234,17 +242,26 @@ function onActorCreated(event_data) {
   try {
     const data = typeof event_data === 'string' ? JSON.parse(event_data) : event_data;
     if (data && data.name && data.path) {
-      sceneImages.value.push({ name: data.name, path: data.path, type: 'obj' });
+      sceneImages.value.push({name: data.name, path: data.path, type: 'obj'});
     }
-  } catch (e) { console.error('处理Actor创建响应失败:', e); }
+  } catch (e) {
+    console.error('处理Actor创建响应失败:', e);
+  }
 }
+
 function onSceneLoaded(event_data) {
   try {
     const data = typeof event_data === 'string' ? JSON.parse(event_data) : event_data;
     if (data && Array.isArray(data.actors)) {
-      sceneImages.value = data.actors.map(actor => ({ name: actor.path.split('/').pop().split('.')[0], path: actor.path, type: 'obj' }));
+      sceneImages.value = data.actors.map(actor => ({
+        name: actor.path.split('/').pop().split('.')[0],
+        path: actor.path,
+        type: 'obj'
+      }));
     }
-  } catch (e) { console.error('处理场景加载响应失败:', e); }
+  } catch (e) {
+    console.error('处理场景加载响应失败:', e);
+  }
 }
 
 const DeleteActor = async (scene) => {
@@ -279,7 +296,7 @@ const DayNightCycle = () => {
       pz.value = z.toFixed(2);
 
       if (window.sceneService && typeof window.sceneService.sun_direction === 'function') {
-        window.sceneService.sun_direction(JSON.stringify({ px: x, py: y, pz: z }));
+        window.sceneService.sun_direction(JSON.stringify({px: x, py: y, pz: z}));
       }
     }
   }, 100);
@@ -311,8 +328,14 @@ onMounted(async () => {
   document.addEventListener('mouseup', stopDrag);
   await waitWebChannel();
   if (window.sceneService) {
-    try { window.sceneService.actor_created.connect(onActorCreated); } catch {}
-    try { window.sceneService.scene_loaded.connect(onSceneLoaded); } catch {}
+    try {
+      window.sceneService.actor_created.connect(onActorCreated);
+    } catch {
+    }
+    try {
+      window.sceneService.scene_loaded.connect(onSceneLoaded);
+    } catch {
+    }
   }
 });
 
@@ -322,8 +345,14 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
   if (window.sceneService) {
-    try { window.sceneService.actor_created.disconnect(onActorCreated); } catch {}
-    try { window.sceneService.scene_loaded.disconnect(onSceneLoaded); } catch {}
+    try {
+      window.sceneService.actor_created.disconnect(onActorCreated);
+    } catch {
+    }
+    try {
+      window.sceneService.scene_loaded.disconnect(onSceneLoaded);
+    } catch {
+    }
   }
 
 });
