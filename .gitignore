@@ -15,6 +15,7 @@
 coverage.xml
 htmlcov/
 */package-lock.json
+*.toml
 
 # ------------------------------
 # Virtual environments
