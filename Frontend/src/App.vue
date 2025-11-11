@@ -1,5 +1,5 @@
 <script setup>
-import InputEventBridge from './components/InputEventBridge.vue'
+import InputEventBridge from './components/bridge/InputEventBridge.vue'
 </script>
 
 <template>

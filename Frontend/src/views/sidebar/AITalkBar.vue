@@ -12,11 +12,11 @@
     <div class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-40" @mousedown="(e) => startResize(e, 'se')"></div>
 
     <!-- 主内容区域 -->
-    <div class="p-4 shadow-md w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 48px);">
+    <div class="w-full bg-[#a8a4a3]/65 flex flex-col" style="height: calc(100vh - 48px);">
       <!-- 对话记录区域 -->
-      <div class="flex-1 overflow-hidden">
-        <div class="h-full max-w-6xl mx-auto p-6">
-          <div class="h-full overflow-y-auto no-scrollbar space-y-2 pr-2">
+      <div ref="chatHistoryRef" class="flex-1 overflow-y-auto p-4">
+        <div class="max-w-6xl mx-auto">
+          <div class="space-y-2 pr-2">
             <div v-for="(message, index) in messages" :key="index"
                  class="p-3 bg-[#E8E8E8]/80 rounded-lg shadow-sm border border-gray-100 space-y-2">
               <div>
@@ -47,16 +47,22 @@
       </div>
 
       <!-- 输入区域 -->
-      <div class="absolute bottom-0 left-0 right-0 bg-[#E8E8E8]/80 border-t border-gray-200 shadow-lg backdrop-blur-sm">
+      <div class="bg-[#E8E8E8]/80 border-t border-gray-200 shadow-lg backdrop-blur-sm">
         <div class="max-w-6xl mx-auto p-4">
           <!-- 隐藏图片选择器 -->
-          <input ref="imageInputRef" type="file" accept="image/*" multiple class="hidden" @change="onImageChange" />
+          <input ref="imageInputRef" type="file" accept="image/*" class="hidden" @change="onImageChange" />
 
           <div class="space-y-2">
             <!-- 顶部：导入图片和提示词按钮 -->
             <div class="flex gap-2">
-              <button @click="triggerImageSelect" class="px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap">
-                导入图片
+              <button @click="triggerImageSelect('product')" class="px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 whitespace-nowrap">
+                导入产品
+              </button>
+              <button @click="triggerImageSelect('scene')" class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 whitespace-nowrap">
+                导入场景
+              </button>
+              <button @click="triggerImageSelect('style')" class="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 whitespace-nowrap">
+                导入样式
               </button>
 
               <div class="relative" @keydown.escape="hidePrompts">
@@ -79,24 +85,25 @@
               </div>
             </div>
 
-            <!-- 中间：待发送图片预览 -->
-            <div v-if="pendingImages.length > 0" class="space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-gray-600">待发送图片 ({{ pendingImages.length }})</span>
-                <button @click="pendingImages = []" class="text-xs text-red-500 hover:text-red-700">清空全部</button>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <div v-for="(img, idx) in pendingImages" :key="idx" class="relative group">
-                  <img :src="img.data" :alt="img.name" class="h-20 w-20 object-cover rounded border border-blue-300" />
-                  <button @click="removeImage(idx)" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                  <div class="text-xs text-gray-600 mt-1 w-20 truncate" :title="img.name">{{ img.name }}</div>
+            <!-- 中间：输入框和待发送图片预览 -->
+            <div class="bg-white rounded-lg border border-gray-300 p-2 space-y-2">
+              <textarea v-model="userInput" placeholder="输入消息..." class="w-full p-2 border-none rounded-lg focus:ring-0 focus:outline-none transition-all resize-none" rows="3"></textarea>
+
+              <div v-if="hasPendingImages" class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-gray-600">待发送图片</span>
+                  <button @click="clearAllImages" class="text-xs text-red-500 hover:text-red-700">清空全部</button>
+                </div>
+                <div class="flex flex-wrap gap-4">
+                  <div v-for="type in ['product', 'scene', 'style']" :key="type">
+                    <div v-if="pendingImages[type]" class="relative group">
+                      <img :src="pendingImages[type].data" :alt="pendingImages[type].name" class="h-20 w-20 object-cover rounded border border-blue-300" />
+                      <button @click="removeImage(type)" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                      <div class="text-xs text-gray-600 mt-1 w-20 truncate capitalize" :title="pendingImages[type].name">{{ imageTypeLabels[type] }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <!-- 输入框 -->
-            <div>
-              <input v-model="userInput" @keyup.enter="sendMessage" placeholder="输入消息..." class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none transition-all border-gray-300 hover:border-blue-300 focus:border-blue-400"/>
             </div>
 
             <!-- 底部：发送按钮 -->
@@ -127,9 +134,9 @@
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted} from 'vue';
+import {ref, onMounted, onUnmounted, computed, nextTick} from 'vue';
 import {useDragResize} from '@/composables/useDragResize';
-import DockTitleBar from '@/components/DockTitleBar.vue';
+import DockTitleBar from '@/components/ui/DockTitleBar.vue';
 
 const {dragState, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 
@@ -137,12 +144,28 @@ const messages = ref([
   {sender: "AI", text: "你好！我是 AI。"},
 ]);
 const userInput = ref('');
+const chatHistoryRef = ref(null);
 
 // 图片相关
 const imageInputRef = ref(null);
 const imageError = ref('');
 const imagePreview = ref(null); // {imageData, imageName}
-const pendingImages = ref([]); // 待发送的图片数组 [{name, data}, ...]
+const currentImageType = ref(null); // 'product', 'scene', 'style'
+const pendingImages = ref({
+  product: null,
+  scene: null,
+  style: null,
+});
+
+const imageTypeLabels = {
+  product: '产品',
+  scene: '场景',
+  style: '样式',
+};
+
+const hasPendingImages = computed(() => {
+  return Object.values(pendingImages.value).some(img => img !== null);
+});
 
 // 提示词相关
 const showPrompts = ref(false);
@@ -162,8 +185,9 @@ function applyPrompt(p) {
   hidePrompts();
 }
 
-function triggerImageSelect() {
+function triggerImageSelect(type) {
   imageError.value = '';
+  currentImageType.value = type;
   imageInputRef.value && imageInputRef.value.click();
 }
 
@@ -171,8 +195,16 @@ function openImagePreview(message) {
   imagePreview.value = {imageData: message.imageData, imageName: message.imageName};
 }
 
-function removeImage(index) {
-  pendingImages.value.splice(index, 1);
+function removeImage(type) {
+  if (pendingImages.value[type]) {
+    pendingImages.value[type] = null;
+  }
+}
+
+function clearAllImages() {
+  pendingImages.value.product = null;
+  pendingImages.value.scene = null;
+  pendingImages.value.style = null;
 }
 
 async function fileToBase64(file) {
@@ -185,40 +217,35 @@ async function fileToBase64(file) {
 }
 
 async function onImageChange(e) {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
+  const file = e.target.files[0];
+  if (!file) return;
   imageError.value = '';
 
-  const validFiles = [];
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (file.size > 20 * 1024 * 1024) {
-      imageError.value = `图片 ${file.name} 大小超过 20MB，已跳过。`;
-      continue;
-    }
-    validFiles.push(file);
+  if (file.size > 20 * 1024 * 1024) {
+    imageError.value = `图片 ${file.name} 大小超过 20MB。`;
+    e.target.value = '';
+    return;
   }
 
-  if (validFiles.length === 0) {
+  if (!currentImageType.value) {
+    console.error('图片类型未指定');
     e.target.value = '';
     return;
   }
 
   try {
-    // 批量转换为 base64
-    const imagePromises = validFiles.map(async (file) => {
-      const base64 = await fileToBase64(file);
-      return {name: file.name, data: base64};
-    });
-
-    const images = await Promise.all(imagePromises);
-    // 添加到待发送列表
-    pendingImages.value.push(...images);
+    const base64 = await fileToBase64(file);
+    pendingImages.value[currentImageType.value] = {
+      name: file.name,
+      data: base64,
+      type: currentImageType.value,
+    };
   } catch (err) {
     console.error('读取图片失败', err);
     imageError.value = '读取图片失败，请重试。';
   } finally {
     e.target.value = '';
+    currentImageType.value = null; // 重置
   }
 }
 
@@ -246,49 +273,58 @@ const SendMessageToAI = async (query, extra = {}) => {
 
 const sendMessage = () => {
   const text = userInput.value.trim();
-  const images = pendingImages.value;
+  const imagesToSend = Object.values(pendingImages.value).filter(img => img !== null);
 
   // 至少要有文字或图片之一
-  if (!text && images.length === 0) return;
+  if (!text && imagesToSend.length === 0) return;
 
   // 构建消息对象
   const messageObj = {sender: "User"};
   let displayText = text || '';
 
-  if (images.length > 0) {
+  if (imagesToSend.length > 0) {
     // 如果有多个图片，显示图片列表
-    const imageList = images.map(img => img.name).join(', ');
+    const imageList = imagesToSend.map(img => img.name).join(', ');
     displayText = displayText
-      ? `${displayText}\n[${images.length}张图片: ${imageList}]`
-      : `[${images.length}张图片: ${imageList}]`;
+      ? `${displayText}\n[${imagesToSend.length}张图片: ${imageList}]`
+      : `[${imagesToSend.length}张图片: ${imageList}]`;
 
     // 如果只有一张图片，直接显示在消息中
-    if (images.length === 1) {
-      messageObj.imageData = images[0].data;
-      messageObj.imageName = images[0].name;
+    if (imagesToSend.length === 1) {
+      messageObj.imageData = imagesToSend[0].data;
+      messageObj.imageName = imagesToSend[0].name;
     } else {
       // 多张图片暂存为数组
-      messageObj.images = images.map(img => ({data: img.data, name: img.name}));
+      messageObj.images = imagesToSend.map(img => ({data: img.data, name: img.name}));
     }
   }
 
   messageObj.text = displayText;
   messages.value.push(messageObj);
 
+  // 滚动到底部
+  nextTick(() => {
+    const chatHistory = chatHistoryRef.value;
+    if (chatHistory) {
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+  });
+
   // 发送到后端
   const extra = {};
-  if (images.length > 0) {
+  if (imagesToSend.length > 0) {
     extra.type = 'images';
-    extra.images = images.map(img => ({
+    extra.images = imagesToSend.map(img => ({
       name: img.name,
-      data: img.data
+      data: img.data,
+      type: img.type, // 附带图片类型
     }));
   }
   SendMessageToAI(text || '[图片]', extra);
 
   // 清空输入
   userInput.value = '';
-  pendingImages.value = [];
+  clearAllImages();
   imageError.value = '';
 };
 
@@ -317,6 +353,14 @@ window.receiveAIMessage = (data) => {
       msgObj.imageName = message.image_name || 'image';
     }
     messages.value.push(msgObj);
+
+    // 滚动到底部
+    nextTick(() => {
+      const chatHistory = chatHistoryRef.value;
+      if (chatHistory) {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+    });
   } catch (e) {
     console.error('处理AI消息失败:', e);
     messages.value.push({

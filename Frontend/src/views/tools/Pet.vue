@@ -2,7 +2,7 @@
   <div class="flex h-[50px] w-[50px]">
     <div class="flex w-full h-full">
       <img
-          src="../assets/cabbage.png"
+          src="@/assets/cabbage.png"
           class="h-20 w-20 fixed left-10 bottom-10 cursor-move"
           @contextmenu="openContextMenu($event)"
           @dblclick="controlAITalkBar"

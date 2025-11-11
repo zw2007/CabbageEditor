@@ -171,7 +171,7 @@ import * as Blockly from 'blockly/core';
 import * as CN from 'blockly/msg/zh-hans';
 import {pythonGenerator} from 'blockly/python';
 import {useDragResize} from '@/composables/useDragResize';
-import DockTitleBar from '@/components/DockTitleBar.vue'
+import DockTitleBar from '@/components/ui/DockTitleBar.vue'
 
 async function waitWebChannel() {
   if (window.sceneService || window.appService || window.scriptingService) return true;

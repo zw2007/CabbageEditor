@@ -118,7 +118,7 @@
 import {ref, onMounted, onUnmounted} from 'vue';
 import {useRoute} from 'vue-router';
 import {useDragResize} from '@/composables/useDragResize';
-import DockTitleBar from '@/components/DockTitleBar.vue';
+import DockTitleBar from '@/components/ui/DockTitleBar.vue';
 
 async function waitWebChannel() {
   if (window.appService || window.sceneService || window.projectService) return true;
