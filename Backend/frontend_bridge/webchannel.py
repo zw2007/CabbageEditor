@@ -28,7 +28,7 @@ def setup_webchannel_for_view(
 
     if register_services:
         try:
-            from Backend.window_layout.services import (
+            from Backend.frontend_bridge import (
                 SceneService,
                 AIService,
                 ScriptingService,

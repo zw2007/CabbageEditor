@@ -76,7 +76,7 @@ def ensure_config_secret_file() -> Path:
     """
     CONFIG_SECRET_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not CONFIG_SECRET_FILE.exists():
-        CONFIG_SECRET_FILE.write_text('api_key = ""\nbase_url = ""\n', encoding="utf-8")
+        CONFIG_SECRET_FILE.write_text('api_key = "xxx"\nbase_url = ""\n', encoding="utf-8")
     return CONFIG_SECRET_FILE
 
 

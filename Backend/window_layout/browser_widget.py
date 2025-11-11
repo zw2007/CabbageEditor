@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QPoint, QUrl, Signal
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .dock_widget import RouteDockWidget, DockCleanupWidget
-from Backend.window_layout import CentralManager
+from Backend.tools import CentralManager
 from Backend.frontend_bridge import setup_webchannel_for_view, teardown_webchannel_for_view
 
 

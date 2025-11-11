@@ -1,9 +1,18 @@
-"""Bridges between Python and the embedded frontend (Qt WebChannel, JS helpers)."""
+"""Qt WebChannel service adapters that bridge UI signals to application services."""
 
-from .webchannel import setup_webchannel_for_view, teardown_webchannel_for_view, WebChannelContext
+from .ai import AIService
+from .app import AppService
+from .project import ProjectService
+from .scene import SceneService
+from .scripting import ScriptingService
+from .webchannel import setup_webchannel_for_view, teardown_webchannel_for_view
 
 __all__ = [
-    "WebChannelContext",
+    "AIService",
+    "AppService",
+    "ProjectService",
+    "SceneService",
+    "ScriptingService",
     "setup_webchannel_for_view",
     "teardown_webchannel_for_view",
 ]

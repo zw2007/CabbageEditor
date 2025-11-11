@@ -24,7 +24,7 @@ sys.path.append(str(settings.paths.repo_root))
 
 bootstrap()
 
-from Backend.window_layout.widgets import main_window  # noqa: E402
+from Backend.window_layout import main_window  # noqa: E402
 
 app, window = main_window.init_app()
 msg_queue = queue.Queue()

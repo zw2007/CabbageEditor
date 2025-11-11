@@ -11,7 +11,7 @@ def load_corona_engine() -> Optional[object]:
     candidates = [
         'CoronaEngine',
         'corona_engine_fallback',
-        'Backend.tools.corona_engine_fallback',
+        'Backend.engine_core.corona_engine_fallback',
         'Backend.corona_engine_fallback',
         'backend.corona_engine_fallback',
     ]
@@ -25,4 +25,11 @@ def load_corona_engine() -> Optional[object]:
             return mod
         except Exception:
             continue
-    return None
+
+    # 如果所有动态导入都失败，则作为最后的手段直接导入
+    try:
+        from Backend.corona_engine_fallback import CoronaEngine
+        return CoronaEngine
+    except ImportError:
+        # 如果直接导入也失败，则返回 None
+        return None
