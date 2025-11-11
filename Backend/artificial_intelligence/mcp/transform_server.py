@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
 
 from Backend.engine_core.scene_manager import SceneManager
-from Backend.window_layout.services.app import AppService
+from Backend.frontend_bridge.app import AppService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TransformMCPServer")

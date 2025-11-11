@@ -38,7 +38,7 @@
 | Backend/artificial_intelligence/ | `services/ai_service.py`、`foundation_api/LLMClient`、`adapters/MCPToolAdapter`、`core/conversation.py` |
 | Backend/window_layout/ | PySide Qt 服务（`services/*.py`）、`widgets/`、`static_components.py`、文件对话框 |
 | Backend/frontend_bridge/ | WebChannel 注册/清理、后续 JS Bridge 扩展点 |
-| Backend/network_service/ | `mcp/server.py`、`transform_server.py`、未来的 LAN/WAN 服务 |
+| Backend/artificial_intelligence/mcp / cli | MCP 服务器、transform server、CLI 客户端 |
 | Backend/script/ | Blockly 运行时脚本输出目录 |
 | docs/ | `backend_interface.md`（WebChannel 契约）、`Backend-TechDoc_new.md`（本文） |
 
@@ -47,7 +47,7 @@
 1. **前端**：构建 `Frontend/dist`。
 2. **密钥**：执行 `python Backend/config/cli_secrets.py`，在 `Backend/config/secrets.toml` 中写入 `api_key` / `base_url`（无需再设置环境变量）。
 3. **后端**：`python Backend/main.py`。默认禁用 GPU，相关环境可在 `config/defaults.toml` 配置。
-4. **MCP/AI**：`python Backend/tools/mcp_client.py` 打开 CLI；`python Backend/tools/transform_server.py` 为 MCP 工具入口（内部引用 `network_service.mcp.server`）。
+4. **MCP/AI**：`python Backend/artificial_intelligence/cli/mcp_client.py` 打开 CLI；`python Backend/artificial_intelligence/mcp/transform_server.py` 为 MCP 工具入口（内部引用 `artificial_intelligence.mcp.server`）。
 
 ## 4. 核心模块
 

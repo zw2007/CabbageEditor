@@ -9,7 +9,7 @@ from mcp import ClientSession
 from mcp.server.fastmcp import FastMCP
 
 from Backend.artificial_intelligence.foundation_api import ToolAdapter
-from Backend.network_service.mcp.server import app as server_app
+from Backend.artificial_intelligence.mcp.server import app as server_app
 
 
 @asynccontextmanager
