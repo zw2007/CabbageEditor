@@ -62,5 +62,6 @@ Backend/__pycache__/
 # ------------------------------
 # Local secrets / backups
 # ------------------------------
-Backend/mcp_client_secrets.json
+Backend/config/mcp_client_secrets.json
+Backend_backup/
 Backend_legacy/

@@ -19,16 +19,15 @@ Signals:
 All payloads are UTF-8 JSON strings. Schema definitions live in `Frontend/src/types/backend.ts`.
 
 ### Secret Management
-- User runs `python -m Backend.interfaces.cli.secrets` to create `~/.coronaengine/credentials.toml`.
-- Runtime order: Env vars (`CORONA_API_KEY`, `CORONA_BASE_URL`) > user file > template `Backend/mcp_client_secrets_example.json`.
+- 运行 `python Backend/config/cli_secrets.py`，在 `Backend/config/secrets.toml` 中写入 `api_key` / `base_url`。
+- Runtime order: `secrets.toml` > `Backend/config/mcp_client_secrets.json`（旧格式）> `Backend/config/mcp_client_secrets_example.json`。
 
 ### Service Composition
 ```
 Frontend (WebChannel)
-   -> Qt services (`sceneService`, `projectService`, `aiService`, ...)
-       -> Application layer (`SceneApplicationService`, `AIApplicationService`, ...)
-           -> Domain (`SceneRepository`, `Actor`, `Conversation`)
-           -> Infrastructure (`LLMClient` + `MCPToolAdapter`, CoronaEngine gateway)
+   -> `window_layout.services.*` (`sceneService`, `projectService`, `aiService`, ...)
+       -> Core services (`engine_core.services.*`, `artificial_intelligence.services.*`)
+           -> Engine runtime (`engine_core` bindings) / AI adapters (`artificial_intelligence`)
 ```
 
-Use `Backend/application/bootstrap.py` to register new services before touching Qt/UI.
+Use `Backend/tools/bootstrap.py` to register new services before touching Qt/UI.
