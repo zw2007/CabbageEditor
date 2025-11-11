@@ -10,7 +10,7 @@
 └────┬───────┘
      │  WebChannel 信号/槽
 ┌────▼────────┐
-│ Qt Services │  (Backend/services/*.py)
+│ Qt Services │  (Backend/interfaces/qt/services/*.py)
 └────┬────────┘
      │  调用
 ┌────▼────────────┐
@@ -28,7 +28,7 @@
 
 - **配置 & 密钥**：`Backend/config/settings.py` + `Backend/config/secrets.py` 统一读取。优先级：环境变量 → `~/.coronaengine/credentials.toml` → 项目模板。
 - **依赖注入**：`Backend/application/bootstrap.py` 注册全局容器（SceneManager、Scene/Project/AI Service、LLMClient、MCP Tool Adapter）。
-- **场景数据源**：所有 Qt 服务都通过同一个 `Backend.utils.scene_manager.SceneManager`，因此渲染层（RenderWidget）、业务层和 MCP 工具共享状态。
+- **场景数据源**：所有 Qt 服务都通过同一个 `Backend.infrastructure.engine.scene_manager.SceneManager`，因此渲染层（RenderWidget）、业务层和 MCP 工具共享状态。
 
 ## 2. 目录结构要点
 
@@ -38,9 +38,10 @@
 | Backend/shared/ | container.py (DI 容器) / logging.py |
 | Backend/application/ | services/\*.py（Scene/Project/AI 等） |
 | Backend/infrastructure/ | ai/mcp_adapter.py、llm/client.py 等 |
-| Backend/interfaces/ | mcp/server.py、cli/secrets.py |
-| Backend/services/ | Qt 层信号/槽适配（App/Scene/Project/Scripting/AI） |
-| Backend/utils/ | scene_manager.py、scene.py、actor.py、static_components.py 等 |
+| Backend/interfaces/ | mcp/server.py、cli/secrets.py、qt/\*（Qt WebChannel 入口） |
+| Backend/interfaces/qt/ | Qt 层信号/槽适配（services/*.py）、BrowserWidget 用的静态资源/中央管理器 |
+| Backend/infrastructure/engine/ | 场景/Actor/Camera/Light 包装、SceneManager、CoronaEngine 装载 |
+| experiments/ | LLM/MCP 原型脚本（不随主进程发布） |
 | docs/ | `backend_interface.md`（WebChannel 契约）、`Backend-TechDoc_new.md`（本文） |
 
 ## 3. 运行与配置
@@ -54,14 +55,14 @@
 
 ### 4.1 SceneManager 与 SceneApplicationService
 
-- `Backend/utils/scene_manager.py`：老版单例实现，内部使用 `Backend/utils/scene.py` 管理 Actor/Camera/Light，对接 CoronaEngine。
+- `Backend/infrastructure/engine/scene_manager.py`：CoronaEngine 绑定的单例实现，内部复用 `Backend/infrastructure/engine/scene.py` 管理 Actor/Camera/Light。
 - `SceneApplicationService`：
   - `create_scene(scene)`：复用 SceneManager，返回场景快照（name / sun_direction / actors / cameras / lights）。
-  - `add_actor(scene, path)`：创建 `Backend.utils.actor.Actor`，同步触发 Qt 层 `actor_created`。
+  - `add_actor(scene, path)`：创建 `Backend.infrastructure.engine.actor.Actor`，同步触发 Qt 层 `actor_created`。
   - `set_camera`、`set_sun`：直接操作渲染用的 `Scene` 对象，避免重复计算导致“昼夜变换”抖动。
   - `export_scene(scene)`：调用 `_scene_snapshot` 返回 JSON。
 
-### 4.2 Qt Service 层
+### 4.2 Qt Service 层（`Backend/interfaces/qt/services`）
 
 | Service | 主要职责 |
 |---------|----------|
@@ -71,7 +72,7 @@
 | `ScriptingService` | Blockly 脚本写入 Backend/script/ + 生成 runScript.py。 |
 | `AIService` | WorkerThread 包装 `AIApplicationService`；对 ExceptionGroup 提供可读错误信息。 |
 
-WebChannel 注册流程详见 `Backend/utils/webchannel_helper.py`：
+WebChannel 注册流程详见 `Backend/interfaces/qt/webchannel.py`：
 - 所有服务在 BrowserWidget 初始化时注册；
 - `ProjectService` 现在接收同一个 `SceneService` 引用，便于复用信号；
 - `SceneService`/`AIService` 等内部自动 bootstrap，无需外部注入。
@@ -119,9 +120,9 @@ WebChannel 注册流程详见 `Backend/utils/webchannel_helper.py`：
 ## 8. 代码清理说明
 
 重构后移除了以下旧文件/模块：
-- `Backend/core/scene/*`（已被 utils 下的 Scene/SceneManager 取代）
-- `Backend/infrastructure/qt/app_bridge.py`, `Backend/infrastructure/qt/webchannel.py`（未接入 UI）
-- `Backend/application/services/scene_service` 中原有的 `SceneRepository`（转回 SceneManager 模式）
+- `Backend/services/*`：Qt 信号/槽适配统一迁入 `Backend/interfaces/qt/services`。
+- `Backend/utils/*`：引擎相关实现移动到 `Backend/infrastructure/engine`，Qt/WebChannel 工具移动到 `Backend/interfaces/qt`。
+- `Backend/LargeLanguageModel/*`：迁至 `experiments/llm_agents`，与运行时彻底解耦。
 
 确保新提交中不再引用上述路径，避免 IDE 误导。
 

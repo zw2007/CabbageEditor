@@ -3,11 +3,12 @@
 新的后端遵循「配置 → 领域 → 应用 → 接口」分层，保证可维护性：
 
 - `config/`：集中式配置与密钥（`settings.py`, `secrets.py`, `defaults.toml`）
-- `core/`：纯领域模型（Scene/Actor/Conversation 等）
+- `core/`：纯领域模型（Conversation、Project 文档结构等）
 - `application/`：用例服务（Scene/Project/AI），通过 `application/bootstrap.py` 注册到全局容器
-- `infrastructure/`：与外界交互（Qt WebChannel、LLM/MCP、文件系统等）
-- `interfaces/`：运行入口（Qt、MCP Server、CLI 工具）
-- legacy `ui/`、`services/`、`utils/` 继续存在，但它们现在只是一层适配器，全部委托给 application 服务
+- `infrastructure/`：与外界交互（LLM/MCP、文件系统、CoronaEngine 包装等）
+- `interfaces/`：运行入口（Qt WebChannel 适配器、MCP Server、CLI 工具）
+- `ui/`：仍保留 Qt Widget（RenderWidget/Dock），通过 `interfaces/qt/services` 获取 WebChannel 服务
+- `experiments/`：脱离主流程的 LLM/MCP 原型（例如 `experiments/llm_agents`）
 
 ## 运行方式
 1. 构建前端 `Frontend/dist`

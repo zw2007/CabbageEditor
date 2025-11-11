@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QMainWindow, QApplication, QDockWidget, QWidget
 from .browser_widget import BrowserWidget
 from .custom_window import CustomWindow
 from .render_widget import RenderWidget
-from ..utils.static_components import url
+from Backend.interfaces.qt.static_components import url
 
 # 兼容常量（避免某些静态分析器无法解析 Qt 枚举名）
 NO_DOCK = getattr(Qt, 'NoDockWidgetArea', 0)

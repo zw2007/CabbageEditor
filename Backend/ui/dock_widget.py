@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QTimer, QObject, Slot, QPoint
 from PySide6.QtGui import QColor, QCursor, QGuiApplication
 from PySide6.QtWidgets import QDockWidget, QWidget
 from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngineSettings
-from ..utils.webchannel_helper import setup_webchannel_for_view, teardown_webchannel_for_view
+from Backend.interfaces.qt.webchannel import setup_webchannel_for_view, teardown_webchannel_for_view
 
 
 class DockDragBridge(QObject):
@@ -193,7 +193,7 @@ class RouteDockWidget(QDockWidget):
         self.services = {}
 
         from PySide6.QtCore import QUrl
-        from ..utils.static_components import url as base_url
+        from Backend.interfaces.qt.static_components import url as base_url
         self.url = QUrl(base_url.toString())
         self.url.setFragment(path)
 

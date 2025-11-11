@@ -4,8 +4,8 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 from Backend.application.bootstrap import bootstrap
 from Backend.application.services.project_service import ProjectApplicationService
+from Backend.infrastructure.files.dialogs import FileHandler
 from Backend.shared.container import get_container
-from Backend.utils.file_handle import FileHandler
 from .scene import SceneService
 
 bootstrap()

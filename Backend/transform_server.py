@@ -5,8 +5,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
 
-from Backend.utils.scene_manager import SceneManager
-from .services.app import AppService
+from Backend.infrastructure.engine.scene_manager import SceneManager
+from Backend.interfaces.qt.services.app import AppService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TransformMCPServer")
@@ -74,11 +74,11 @@ async def list_actors(scene_name: str) -> str:
         scene_name: Name of the scene
     """
     try:
-        actor_list = []
+        actor_names = []
         scene = SceneManager().get_scene(scene_name)
         if scene:
-            actor_list = list(scene.actors.keys())
-        return json.dumps({"scene": scene_name, "actors": actor_list}, indent=2)
+            actor_names = [actor.name for actor in scene.get_actors()]
+        return json.dumps({"scene": scene_name, "actors": actor_names}, indent=2)
     except Exception as e:
         logger.error(f"Error listing actors: {str(e)}")
         return f"Error listing actors: {str(e)}"

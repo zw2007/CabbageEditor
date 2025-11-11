@@ -4,11 +4,11 @@ from Backend.application.services.scene_service import SceneApplicationService
 from Backend.application.services.project_service import ProjectApplicationService
 from Backend.application.services.ai_service import AIApplicationService
 from Backend.infrastructure.ai.mcp_adapter import MCPToolAdapter
+from Backend.infrastructure.engine.scene_manager import SceneManager
 from Backend.infrastructure.llm.client import LLMClient
 from Backend.interfaces.mcp import server as mcp_server
 from Backend.shared.container import get_container
 from Backend.shared.logging import configure_logging
-from Backend.utils.scene_manager import SceneManager
 
 
 def bootstrap() -> None:

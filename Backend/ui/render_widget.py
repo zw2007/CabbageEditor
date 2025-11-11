@@ -1,10 +1,10 @@
 from PySide6.QtCore import QRect, Signal, Qt
 from PySide6.QtWidgets import QWidget
 
-from ..utils.engine_import import load_corona_engine
-from ..utils.scene import Scene
-from ..utils.camera import Camera
-from ..utils.scene_manager import SceneManager  # 新增导入
+from Backend.infrastructure.engine.engine_import import load_corona_engine
+from Backend.infrastructure.engine.scene import Scene
+from Backend.infrastructure.engine.camera import Camera
+from Backend.infrastructure.engine.scene_manager import SceneManager  # 新增导入
 
 CoronaEngine = load_corona_engine()
 

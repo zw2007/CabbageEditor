@@ -28,11 +28,11 @@ def setup_webchannel_for_view(
 
     if register_services:
         try:
-            from Backend.services.scene import SceneService
-            from Backend.services.ai import AIService
-            from Backend.services.scripting import ScriptingService
-            from Backend.services.project import ProjectService
-            from Backend.services.app import AppService
+            from Backend.interfaces.qt.services.scene import SceneService
+            from Backend.interfaces.qt.services.ai import AIService
+            from Backend.interfaces.qt.services.scripting import ScriptingService
+            from Backend.interfaces.qt.services.project import ProjectService
+            from Backend.interfaces.qt.services.app import AppService
 
             scene_service = SceneService(None)
             ai_service = AIService(None)

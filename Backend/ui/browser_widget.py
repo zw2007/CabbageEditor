@@ -4,8 +4,8 @@ from PySide6.QtCore import Qt, QPoint, QUrl, Signal
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .dock_widget import RouteDockWidget, DockCleanupWidget
-from ..utils.central_manager import CentralManager
-from ..utils.webchannel_helper import setup_webchannel_for_view, teardown_webchannel_for_view
+from Backend.interfaces.qt.central_manager import CentralManager
+from Backend.interfaces.qt.webchannel import setup_webchannel_for_view, teardown_webchannel_for_view
 
 
 def get_dock_area(position, floatposition, size):
