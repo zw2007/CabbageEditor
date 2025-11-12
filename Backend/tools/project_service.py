@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from Backend.engine_core.project import ProjectAsset, SceneDocument
-from Backend.engine_core.services.scene_service import SceneApplicationService
+from .models import ProjectAsset, SceneDocument
+from .scene_service import SceneApplicationService
 from Backend.shared.logging import get_logger
 
 

@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator, Dict
 
 from mcp.server.fastmcp import FastMCP, Context
 
-from Backend.engine_core.services.scene_service import SceneApplicationService
+from Backend.tools.scene_service import SceneApplicationService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TransformMCPServer")

@@ -3,7 +3,7 @@ import json
 from PySide6.QtCore import QObject, Signal, Slot
 
 from Backend.tools.bootstrap import bootstrap
-from Backend.engine_core.services.project_service import ProjectApplicationService
+from Backend.tools.project_service import ProjectApplicationService
 from Backend.tools import FileHandler
 from Backend.shared.container import get_container
 from .scene import SceneService

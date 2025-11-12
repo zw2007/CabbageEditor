@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from Backend.engine_core.services.scene_service import SceneApplicationService
-from Backend.engine_core.services.project_service import ProjectApplicationService
+from .scene_service import SceneApplicationService
+from .project_service import ProjectApplicationService
 from Backend.artificial_intelligence.services import AIApplicationService
 from Backend.artificial_intelligence.adapters import MCPToolAdapter
 from Backend.engine_core.scene_manager import SceneManager

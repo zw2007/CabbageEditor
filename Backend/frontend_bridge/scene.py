@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 from PySide6.QtCore import QObject, Signal, Slot
 
-from Backend.engine_core.services.scene_service import SceneApplicationService
+from Backend.tools.scene_service import SceneApplicationService
 from Backend.tools.bootstrap import bootstrap
 from Backend.shared.container import get_container
 
