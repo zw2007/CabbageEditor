@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
-from Backend.tools.bootstrap import bootstrap
+from Backend.utils.bootstrap import bootstrap
 from Backend.config.settings import get_settings
 
 settings = get_settings()

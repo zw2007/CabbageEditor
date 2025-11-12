@@ -6,7 +6,7 @@ from typing import Callable, Optional
 
 from Backend.artificial_intelligence.core import Conversation
 from Backend.artificial_intelligence.foundation_api import LLMClient
-from Backend.shared.logging import get_logger
+from Backend.utils.logging import get_logger
 
 
 logger = get_logger(__name__)

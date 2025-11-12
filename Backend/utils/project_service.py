@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .models import ProjectAsset, SceneDocument
 from .scene_service import SceneApplicationService
-from Backend.shared.logging import get_logger
+from Backend.utils.logging import get_logger
 
 
 logger = get_logger(__name__)

@@ -7,8 +7,8 @@ from Backend.artificial_intelligence.adapters import MCPToolAdapter
 from Backend.engine_core.scene_manager import SceneManager
 from Backend.artificial_intelligence.foundation_api import LLMClient
 from Backend.artificial_intelligence.mcp import server as mcp_server
-from Backend.shared.container import get_container
-from Backend.shared.logging import configure_logging
+from Backend.utils.container import get_container
+from Backend.utils.logging import configure_logging
 
 
 def bootstrap() -> None:

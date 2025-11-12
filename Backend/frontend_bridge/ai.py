@@ -3,9 +3,9 @@ import json
 import time
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 
-from Backend.tools.bootstrap import bootstrap
+from Backend.utils.bootstrap import bootstrap
 from Backend.artificial_intelligence.services import AIApplicationService
-from Backend.shared.container import get_container
+from Backend.utils.container import get_container
 
 bootstrap()
 

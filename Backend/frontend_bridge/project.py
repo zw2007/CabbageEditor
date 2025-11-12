@@ -2,10 +2,10 @@ from __future__ import annotations
 import json
 from PySide6.QtCore import QObject, Signal, Slot
 
-from Backend.tools.bootstrap import bootstrap
-from Backend.tools.project_service import ProjectApplicationService
-from Backend.tools import FileHandler
-from Backend.shared.container import get_container
+from Backend.utils.bootstrap import bootstrap
+from Backend.utils.project_service import ProjectApplicationService
+from Backend.utils import FileHandler
+from Backend.utils.container import get_container
 from .scene import SceneService
 
 bootstrap()

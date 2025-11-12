@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from Backend.engine_core.actor import Actor
 from Backend.engine_core.scene_manager import SceneManager
-from Backend.shared.logging import get_logger
+from Backend.utils.logging import get_logger
 
 
 logger = get_logger(__name__)

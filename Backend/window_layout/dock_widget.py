@@ -193,7 +193,7 @@ class RouteDockWidget(QDockWidget):
         self.services = {}
 
         from PySide6.QtCore import QUrl
-        from Backend.tools import url as base_url
+        from Backend.utils import url as base_url
         self.url = QUrl(base_url.toString())
         self.url.setFragment(path)
 

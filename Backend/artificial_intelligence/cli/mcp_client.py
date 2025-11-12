@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 from typing import Callable, Optional
 
-from Backend.tools.bootstrap import bootstrap
+from Backend.utils.bootstrap import bootstrap
 from Backend.artificial_intelligence.services import AIApplicationService
-from Backend.shared.container import get_container
+from Backend.utils.container import get_container
 
 bootstrap()
 container = get_container()

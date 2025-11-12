@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import json
 
 from openai import OpenAI
@@ -8,7 +8,7 @@ from openai import OpenAI
 from Backend.config.settings import get_settings
 from Backend.config.secrets import get_secret_bundle
 from Backend.artificial_intelligence.core import Conversation
-from Backend.shared.logging import get_logger
+from Backend.utils.logging import get_logger
 
 
 logger = get_logger(__name__)
