@@ -277,31 +277,22 @@ class RouteDockWidget(QDockWidget):
                 self.send_message_to_dock(json_data)
 
         def _on_create_route(routename, routepath, position, floatposition, size):
+            """创建新的 Dock - 直接调用 CentralManager"""
             try:
-                creator = getattr(self.central_manager, '_creator', None)
-                if callable(creator):
-                    creator(routename, routepath, position, floatposition, size)
-                    return
-                # 兜底：直接调用主窗口的 BrowserWidget
-                bw = getattr(self.Main_Window, 'browser_widget', None)
-                if bw and hasattr(bw, 'AddDockWidget'):
-                    bw.AddDockWidget(routename, routepath, position, floatposition, size)
+                if hasattr(self.central_manager, 'create_dock'):
+                    self.central_manager.create_dock(routename, routepath, position, floatposition, size)
                 else:
-                    logger.warning('未找到 Dock 创建回流目标（CentralManager/browser_widget）')
+                    logger.error('CentralManager 没有 create_dock 方法')
             except Exception as e:
                 logger.exception('_on_create_route 处理失败')
 
         def _on_remove_route(routename):
+            """删除 Dock - 直接调用 CentralManager"""
             try:
-                remover = getattr(self.central_manager, '_remover', None)
-                if callable(remover):
-                    remover(routename)
-                    return
-                bw = getattr(self.Main_Window, 'browser_widget', None)
-                if bw and hasattr(bw, 'RemoveDockWidget'):
-                    bw.RemoveDockWidget(routename)
+                if hasattr(self.central_manager, 'remove_dock'):
+                    self.central_manager.remove_dock(routename)
                 else:
-                    self.central_manager.delete_dock(routename)
+                    logger.error('CentralManager 没有 remove_dock 方法')
             except Exception as e:
                 logger.exception('_on_remove_route 处理失败')
 
