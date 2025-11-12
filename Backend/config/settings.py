@@ -20,6 +20,8 @@ from typing import Optional
 import os
 import tomllib
 
+from Backend.config.secrets import get_secret_bundle
+
 _SETTINGS: Optional["Settings"] = None
 
 
@@ -79,9 +81,10 @@ def _load_settings() -> Settings:
         env_key = f"CORONA_{key.upper()}"
         return os.getenv(env_key, user_conf.get(key, defaults.get(key, default)))
 
+    bundle = get_secret_bundle()
     secrets = SecretsConfig(
-        api_key=_pick("api_key"),
-        base_url=_pick("base_url"),
+        api_key=bundle.api_key,
+        base_url=bundle.base_url,
     )
 
     llm = LLMConfig(

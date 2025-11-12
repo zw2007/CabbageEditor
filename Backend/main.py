@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
-from Backend.application.bootstrap import bootstrap
+from Backend.tools.bootstrap import bootstrap
 from Backend.config.settings import get_settings
 
 settings = get_settings()
@@ -24,7 +24,7 @@ sys.path.append(str(settings.paths.repo_root))
 
 bootstrap()
 
-from Backend.ui import main_window  # noqa: E402
+from Backend.window_layout import main_window  # noqa: E402
 
 app, window = main_window.init_app()
 msg_queue = queue.Queue()

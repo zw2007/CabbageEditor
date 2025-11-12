@@ -78,7 +78,7 @@ pythonGenerator.workspaceToCode = function customWorkspaceToCode(workspace) {
   const header = [
     '# -*- coding: utf-8 -*-',
     `# Generated from Blockly by CabbageEditor @ ${timestamp}`,
-    'from Backend.utils.engine_import import load_corona_engine',
+    'from Backend.infrastructure.engine.engine_import import load_corona_engine',
     'CoronaEngine = load_corona_engine()'
   ].join('\n')
 
