@@ -1,8 +1,11 @@
 from __future__ import annotations
 import typing as _t
+import logging
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtCore import QObject
+
+
+logger = logging.getLogger(__name__)
 
 
 class WebChannelContext:
@@ -67,7 +70,7 @@ def setup_webchannel_for_view(
                 "appService": app_service,
             }
         except Exception as e:
-            print("[WARN] 注册服务对象失败: {}".format(e))
+            logger.exception("注册服务对象失败: %s", e)
 
     # 注册自定义对象（如 DockBridge）
     if extra_objects:
@@ -75,7 +78,7 @@ def setup_webchannel_for_view(
             try:
                 channel.registerObject(name, obj)
             except Exception as e:
-                print("[WARN] 注册自定义对象 {} 失败: {}".format(name, e))
+                logger.exception("注册自定义对象 %s 失败: %s", name, e)
 
     try:
         view.page().setWebChannel(channel)
