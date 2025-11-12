@@ -1,6 +1,6 @@
 import json
 
-from PySide6.QtCore import Qt, QPoint, QUrl, Signal
+from PySide6.QtCore import Qt, QPoint, QUrl, Signal, QTimer
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .dock_widget import RouteDockWidget, DockCleanupWidget
@@ -112,7 +112,14 @@ class BrowserWidget(QWebEngineView):
         dock = self.central_manager.docks.get(routename)
         if dock:
             self.Main_Window.removeDockWidget(dock)
-            DockCleanupWidget(browser, routename, self.central_manager)
+            # 保存清理器引用，防止被过早垃圾回收
+            cleanup = DockCleanupWidget(browser, routename, self.central_manager)
+            # 将清理器保存到实例变量，延长生命周期
+            if not hasattr(self, '_cleanup_widgets'):
+                self._cleanup_widgets = []
+            self._cleanup_widgets.append(cleanup)
+            # 200ms 后清理引用（足够完成3步清理）
+            QTimer.singleShot(200, lambda: self._cleanup_widgets.remove(cleanup) if cleanup in self._cleanup_widgets else None)
 
     def handle_command_to_main(self, command_name, command_data):
         if command_name == "go_home":

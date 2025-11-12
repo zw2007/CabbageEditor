@@ -1,4 +1,5 @@
 import json
+import logging
 
 from PySide6.QtCore import Qt, QTimer, QObject, Slot, QPoint
 from PySide6.QtGui import QColor, QCursor, QGuiApplication
@@ -6,9 +7,12 @@ from PySide6.QtWidgets import QDockWidget, QWidget
 from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngineSettings
 from Backend.frontend_bridge import setup_webchannel_for_view, teardown_webchannel_for_view
 
+logger = logging.getLogger(__name__)
+
 
 class DockDragBridge(QObject):
     """Expose minimal drag hooks for H5 to control float/move and trigger docking preview."""
+
     def __init__(self, dock_widget, main_window, parent=None):
         super(DockDragBridge, self).__init__(parent)
         self._dock = dock_widget
@@ -41,7 +45,7 @@ class DockDragBridge(QObject):
             self._drag_start_global = web_global + QPoint(int(x), int(y))
             self._orig_dock_global = self._dock.mapToGlobal(QPoint(0, 0))
         except Exception:
-            pass
+            logger.exception("start_drag failed")
 
     @Slot(int, int)
     def drag_move(self, x, y):
@@ -283,9 +287,9 @@ class RouteDockWidget(QDockWidget):
                 if bw and hasattr(bw, 'AddDockWidget'):
                     bw.AddDockWidget(routename, routepath, position, floatposition, size)
                 else:
-                    print('[WARN] 未找到 Dock 创建回流目标（CentralManager/browser_widget）')
+                    logger.warning('未找到 Dock 创建回流目标（CentralManager/browser_widget）')
             except Exception as e:
-                print('[ERROR] _on_create_route 处理失败: {}'.format(e))
+                logger.exception('_on_create_route 处理失败')
 
         def _on_remove_route(routename):
             try:
@@ -299,7 +303,7 @@ class RouteDockWidget(QDockWidget):
                 else:
                     self.central_manager.delete_dock(routename)
             except Exception as e:
-                print('[ERROR] _on_remove_route 处理失败: {}'.format(e))
+                logger.exception('_on_remove_route 处理失败')
 
         host_window = getattr(self.Main_Window, 'osd', self.Main_Window)
         drag_bridge = DockDragBridge(self, host_window, self)
@@ -320,7 +324,7 @@ class RouteDockWidget(QDockWidget):
             self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
                 "window.__dockRouteName = {};".format(json.dumps(name))))
         except Exception:
-            pass
+            logger.exception('Failed to connect loadFinished')
         self.browser.load(self.url)
 
         self.central_manager.register_dock(self.name, self)
@@ -331,7 +335,7 @@ class RouteDockWidget(QDockWidget):
             try:
                 ai_service.ai_response.connect(self.send_ai_message_to_js)
             except Exception:
-                pass
+                logger.exception('Failed to connect ai_service response')
 
         self.topLevelChanged.connect(self.handle_top_level_change)
         self.destroyed.connect(self.cleanup_resources)
@@ -355,7 +359,7 @@ class RouteDockWidget(QDockWidget):
                 new_y = current_pos.y() + int(data.get("deltaY", 0))
                 self.move(new_x, new_y)
             except Exception as e:
-                print("处理拖拽事件失败: {}".format(str(e)))
+                logger.exception("处理拖拽事件失败")
         elif event_type == "close":
             self.close()
         elif event_type == "float":
@@ -364,7 +368,7 @@ class RouteDockWidget(QDockWidget):
                 self.setFloating(bool(data.get("isFloating", False)))
                 self.raise_()
             except Exception as e:
-                print("处理float事件失败: {}".format(str(e)))
+                logger.exception("处理float事件失败")
         elif event_type == "resize":
             try:
                 data = data_obj if isinstance(data_obj, dict) else {}
@@ -377,7 +381,7 @@ class RouteDockWidget(QDockWidget):
                 self.resize(max(200, width), max(200, height))
 
             except Exception as e:
-                print("处理resize事件失败: {}".format(str(e)))
+                logger.exception("处理resize事件失败")
 
     def handle_top_level_change(self):
         if self.isFloating():
@@ -414,88 +418,257 @@ class RouteDockWidget(QDockWidget):
 
             QTimer.singleShot(0, lambda: self.browser.page().runJavaScript(js_code))
         except Exception as e:
-            print("发送消息到JS失败: {}".format(str(e)))
+            logger.exception("发送消息到JS失败")
 
     def cleanup_resources(self):
+        logger.info("[Dock清理] 开始清理: %s", self.name)
+
         try:
-            if getattr(self, "_webchannel_ctx", None):
+            self._cleanup_webchannel()
+            self._cleanup_web_page()
+            self._cleanup_profile()
+            self._cleanup_browser()
+            self._unregister_from_manager()
+
+            logger.info("[Dock清理] 完成清理: %s", self.name)
+        except Exception as e:
+            logger.exception("[Dock清理] 异常: %s", self.name)
+
+    def _cleanup_webchannel(self):
+        """清理 WebChannel 连接"""
+        if getattr(self, "_webchannel_ctx", None):
+            try:
                 teardown_webchannel_for_view(self.browser, self._webchannel_ctx)
                 self._webchannel_ctx = None
-            if hasattr(self, "page") and self.page:
-                self.page.deleteLater()
+                logger.info("[Dock清理] WebChannel 已释放")
+            except Exception as e:
+                logger.exception("[Dock清理] WebChannel 释放失败")
+
+    def _cleanup_web_page(self):
+        """清理 Web 页面：断开引用并标记删除，同时保存正在删除的 page 对象供后续检查"""
+        if hasattr(self, "page") and self.page:
+            try:
+                page_obj = self.page
+                # 断开 page 与父对象关系并标记删除
+                try:
+                    page_obj.setParent(None)
+                except Exception:
+                    pass
+                try:
+                    page_obj.deleteLater()
+                except Exception:
+                    pass
+
+                # 保留对正在删除 page 的引用，供 later 检测/连接使用
+                self._page_being_deleted = page_obj
                 self.page = None
+                logger.info("[Dock清理] Web页面已标记删除")
+            except Exception as e:
+                logger.exception("[Dock清理] Web页面释放失败")
+
+    def _cleanup_profile(self):
+        """清理 WebEngine Profile：在关联的 Page 完全销毁后再删除 Profile"""
+        if getattr(self, "profile", None) is not None:
             try:
-                self.central_manager.delete_dock(self.name)
-            except Exception:
-                pass
-            try:
-                if getattr(self, "profile", None) is not None:
+                try:
+                    self.profile.clearHttpCache()
+                except Exception:
+                    pass
+
+                profile_to_delete = self.profile
+                self.profile = None
+
+                # 如果我们知道有一个正在被删除的 page，等它 destroyed 信号后再删除 profile
+                page_obj = getattr(self, '_page_being_deleted', None)
+                if page_obj is not None:
                     try:
-                        self.profile.clearHttpCache()
-                    except Exception:
-                        pass
-                    self.profile.deleteLater()
-                    self.profile = None
-            except Exception:
-                pass
-            if hasattr(self, "browser"):
+                        def _delete_profile_after_page(_=None, p=profile_to_delete):
+                            try:
+                                p.deleteLater()
+                                logger.info("[Dock清理] Profile 已在 page 销毁后删除")
+                            except Exception as e:
+                                logger.exception("[Dock清理] Profile 删除失败")
+
+                        # Connect the destroyed signal. If the object is already scheduled for deletion,
+                        # destroyed will still be emitted and our slot will run.
+                        page_obj.destroyed.connect(_delete_profile_after_page)
+                        logger.info("[Dock清理] Profile 的删除已绑定到 page.destroyed 信号")
+
+                        # 保留弱引用说明：一旦处理完可以移除引用
+                        QTimer.singleShot(500, lambda: setattr(self, '_page_being_deleted', None))
+                    except Exception as e:
+                        # Fallback: delete profile after a short timeout
+                        logger.exception("[Dock清理] 无法绑定 destroyed 信号，改用延迟删除")
+                        QTimer.singleShot(100, lambda p=profile_to_delete: (p.deleteLater(), logger.info("[Dock清理] Profile 已延迟删除")))
+                else:
+                    # 没有 page 在删除，直接删除 profile
+                    try:
+                        profile_to_delete.deleteLater()
+                        logger.info("[Dock清理] Profile 已删除")
+                    except Exception as e:
+                        logger.exception("[Dock清理] Profile 删除失败")
+
+                logger.info("[Dock清理] Profile 已安排删除流程")
+            except Exception as e:
+                logger.exception("[Dock清理] Profile 释放失败")
+
+    def _cleanup_browser(self):
+        """清理浏览器 Widget"""
+        if hasattr(self, "browser") and self.browser:
+            try:
+                # 先断开浏览器的 Page 引用
+                try:
+                    self.browser.setPage(None)
+                except Exception:
+                    pass
+
                 self.browser.deleteLater()
-                print("清理浏览器资源: {}".format(self.name))
+                logger.info("[Dock清理] 浏览器已标记删除")
+            except Exception as e:
+                logger.exception("[Dock清理] 浏览器释放失败")
+
+    def _unregister_from_manager(self):
+        """从管理器注销"""
+        try:
+            if hasattr(self, "central_manager") and self.central_manager:
+                self.central_manager.delete_dock(self.name)
+                logger.info("[Dock清理] 已从管理器注销")
         except Exception as e:
-            print("资源清理异常: {}".format(str(e)))
+            logger.exception("[Dock清理] 注销失败")
 
     def closeEvent(self, event):
+        """关闭事件处理 - 清理工作线程"""
+        logger.info("[Dock关闭] 触发关闭事件: %s", self.name)
+
         try:
-            for thread in self.worker_threads:
+            self._stop_worker_threads()
+        except Exception as e:
+            logger.exception("[Dock关闭] 线程清理异常: %s", self.name)
+
+        # 调用父类的关闭事件
+        super(RouteDockWidget, self).closeEvent(event)
+
+    def _stop_worker_threads(self):
+        """停止所有工作线程"""
+        if not hasattr(self, 'worker_threads') or not self.worker_threads:
+            return
+
+        logger.info("[Dock关闭] 停止 %d 个工作线程", len(self.worker_threads))
+
+        for thread in self.worker_threads:
+            try:
                 thread.quit()
                 thread.wait()
-            self.worker_threads.clear()
-        except Exception as e:
-            print("关闭事件处理异常: {}".format(str(e)))
-        super(RouteDockWidget, self).closeEvent(event)
+            except Exception as e:
+                logger.exception("[Dock关闭] 线程停止失败")
+
+        self.worker_threads.clear()
 
 
 class DockCleanupWidget(QWidget):
+    CLEANUP_DELAY = 50
     def __init__(self, browser, name, central_manager):
         super(DockCleanupWidget, self).__init__()
         self.central_manager = central_manager
         self.browser = browser
-        dock = self.central_manager.docks.get(name)
+        self.dock_name = name
+        self.dock = self.central_manager.docks.get(name)
 
-        if dock:
-            print("[DEBUG] 开始删除 {}".format(name))
-            dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        if self.dock:
+            logger.info("[Dock清理器] 开始清理: %s", name)
+            self._start_cleanup()
+        else:
+            logger.info("[Dock清理器] Dock 不存在: %s", name)
 
-            def step1():
-                if dock and dock.isWidgetType():
-                    content = dock.widget()
-                    if content:
-                        print("[DEBUG] Step1 清理内容 {}".format(name))
-                        content.hide()
-                        try:
-                            if content.page():
-                                content.page().setWebChannel(None)
-                        except RuntimeError:
-                            pass
-                        content.setParent(None)
-                QTimer.singleShot(50, step2)
+    def _start_cleanup(self):
+        """启动清理流程"""
+        self.dock.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        QTimer.singleShot(0, self._cleanup_content)
 
-            def step2():
+    def _cleanup_content(self):
+        """步骤1: 清理 Dock 内容"""
+        logger.info("[Dock清理器] [步骤1/3] 开始清理内容: %s", self.dock_name)
+
+        try:
+            if not self._is_dock_valid():
+                logger.info("[Dock清理器] [步骤1/3] Dock 已失效，跳过内容清理: %s", self.dock_name)
+                QTimer.singleShot(self.CLEANUP_DELAY, self._cleanup_dock_widget)
+                return
+
+            content = self.dock.widget()
+            if content:
+                logger.info("[Dock清理器] [步骤1/3] 清理内容 Widget: %s", self.dock_name)
+                content.hide()
+
+                # 清理 WebChannel
                 try:
-                    if dock and dock.isWidgetType() and dock.isVisible():
-                        print("[DEBUG] Step2 删除dock {}".format(name))
-                        dock.hide()
-                        dock.setParent(None)
-                        dock.deleteLater()
-                except RuntimeError as e:
-                    print("[WARN] 对象已提前删除: {}".format(str(e)))
+                    if hasattr(content, 'page') and content.page():
+                        content.page().setWebChannel(None)
+                        logger.info("[Dock清理器] [步骤1/3] WebChannel 已清理: %s", self.dock_name)
+                except RuntimeError:
+                    pass
 
-                if name in self.central_manager.docks:
-                    del self.central_manager.docks[name]
+                content.setParent(None)
+                logger.info("[Dock清理器] [步骤1/3] 内容 Widget 已移除: %s", self.dock_name)
+            else:
+                logger.info("[Dock清理器] [步骤1/3] 无内容 Widget: %s", self.dock_name)
+        except Exception as e:
+            logger.exception("[Dock清理器] [步骤1/3] 内容清理失败: %s", self.dock_name)
 
-                QTimer.singleShot(50, step3)
+        # 继续下一步
+        logger.info("[Dock清理器] [步骤1/3] 完成，等待 %dms 后进入步骤2: %s", self.CLEANUP_DELAY, self.dock_name)
+        QTimer.singleShot(self.CLEANUP_DELAY, self._cleanup_dock_widget)
 
-            def step3():
-                print("[DEBUG] Step3 最终确认 {}".format(name))
+    def _cleanup_dock_widget(self):
+        """步骤2: 清理 Dock 本身"""
+        logger.info("[Dock清理器] [步骤2/3] 开始清理 Dock Widget: %s", self.dock_name)
 
-            QTimer.singleShot(0, step1)
+        try:
+            if self._is_dock_valid():
+                if self.dock.isVisible():
+                    logger.info("[Dock清理器] [步骤2/3] 隐藏并删除 Dock: %s", self.dock_name)
+                    self.dock.hide()
+                    self.dock.setParent(None)
+                    self.dock.deleteLater()
+                    logger.info("[Dock清理器] [步骤2/3] Dock 已标记删除: %s", self.dock_name)
+                else:
+                    logger.info("[Dock清理器] [步骤2/3] Dock 已隐藏，仅删除: %s", self.dock_name)
+                    self.dock.setParent(None)
+                    self.dock.deleteLater()
+            else:
+                logger.info("[Dock清理器] [步骤2/3] Dock 已失效: %s", self.dock_name)
+        except RuntimeError as e:
+            logger.exception("[Dock清理器] [步骤2/3] Dock 已提前删除")
+        except Exception as e:
+            logger.exception("[Dock清理器] [步骤2/3] Dock 删除失败: %s", self.dock_name)
+
+        # 从管理器移除
+        self._unregister_dock()
+
+        # 继续下一步
+        logger.info("[Dock清理器] [步骤2/3] 完成，等待 %dms 后进入步骤3: %s", self.CLEANUP_DELAY, self.dock_name)
+        QTimer.singleShot(self.CLEANUP_DELAY, self._finalize_cleanup)
+
+    def _unregister_dock(self):
+        """从管理器注销 Dock"""
+        try:
+            if self.dock_name in self.central_manager.docks:
+                del self.central_manager.docks[self.dock_name]
+                logger.info("[Dock清理器] 已从管理器注销: %s", self.dock_name)
+        except Exception as e:
+            logger.exception("[Dock清理器] 注销失败: %s", self.dock_name)
+
+    def _finalize_cleanup(self):
+        """步骤3: 最终确认"""
+        logger.info("[Dock清理器] [步骤3/3] 最终清理: %s", self.dock_name)
+
+        # 清理自身引用
+        self.dock = None
+        self.central_manager = None
+        self.browser = None
+
+        logger.info("[Dock清理器] [步骤3/3] 完成所有清理: %s", self.dock_name)
+
+    def _is_dock_valid(self):
+        """检查 Dock 是否仍然有效"""
+        return self.dock is not None and self.dock.isWidgetType()
