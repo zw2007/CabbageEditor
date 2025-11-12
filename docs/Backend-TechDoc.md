@@ -1,5 +1,7 @@
 # CabbageEditor 后端技术文档
 
+> ⚠️ 本文记录 Legacy 架构，所提的 `Backend/services/*`、`Backend/utils/*` 等路径已在新版中迁移至 `Backend/interfaces/qt/services` 与 `Backend/infrastructure/engine`。最新结构详见 `Backend-TechDoc_new.md`。
+
 ## 概述
 后端基于 PySide6 的 Qt + QWebEngine 提供编辑器主程序与 Dock 容器，使用 Qt WebChannel 将 C++/Python 能力暴露给前端。当前采用“服务化 + 回调（无 Bridge 依赖）”设计：
 - WebChannelHelper 统一注册与清理服务对象，并提供回调接线（on_create_route/on_remove_route/on_message_to_dock/on_command_to_main）
