@@ -6,7 +6,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '引擎',
-      colour: '#5631E4',
+      categorystyle: 'engine_category',
       contents: [
         { kind: 'block', type: 'engine_move' },
         { kind: 'block', type: 'engine_rotateX' },
@@ -29,7 +29,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '外观',
-      colour: '#C501F6',
+      categorystyle: 'appearance_category',
       contents: [
         { kind: 'block', type: 'appearance_cartoonSet' },
         { kind: 'block', type: 'appearance_nextCartoon' },
@@ -47,7 +47,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '事件',
-      colour: '#FFDE59',
+      categorystyle: 'event_category',
       contents: [
         { kind: 'block', type: 'event_gameStart'},
         { kind: 'block', type: 'event_keyboard'},
@@ -64,7 +64,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '控制',
-      colour: '#FE9900',
+      categorystyle: 'control_category',
       contents: [
         { kind: 'block', type: 'control_wait'},
         { kind: 'block', type: 'control_for'},
@@ -84,7 +84,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '侦测',
-      colour: '#42EEF4',
+      categorystyle: 'detect_category',
       contents: [
         { kind: 'block', type: 'detect_touch'},
         { kind: 'block', type: 'detect_distance'},
@@ -99,7 +99,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '运算',
-      colour: '#7DDA58',
+      categorystyle: 'math_category',
       contents: [
         { kind: 'block', type: 'math_add' },
         { kind: 'block', type: 'math_mul' },
@@ -123,7 +123,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '变量',
-      colour: '#FE9900',
+      categorystyle: 'variable_category',
       contents: [
         { kind: 'block', type: 'variable_add' },
         { kind: 'block', type: 'variable_set' },
@@ -134,7 +134,7 @@ export const TOOLBOX_CONFIG = {
     {
       kind: 'category',
       name: '列表',
-      colour: '#E4080A',
+      categorystyle: 'list_category',
       contents: [
        /*  { kind: 'block', type: 'list_add' },
         { kind: 'block', type: 'list_del' },

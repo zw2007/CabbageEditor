@@ -14,7 +14,7 @@
 
 <script setup>
 import {ref, onMounted, onUnmounted} from 'vue';
-import {useDragResize} from '@/composables/useDragResize';
+import {useDragResize} from '@/components/ui/DragTitleBar.js';
 
 const {dragState, startDrag, stopDrag, onDrag, stopResize, onResize} = useDragResize();
 
