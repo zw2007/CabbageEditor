@@ -217,6 +217,7 @@ import {defineListGenerators} from '@/blockly/generators/list.js';
 
 import {BLOCK_CATEGORY_MAP} from '@/blockly/configs/categoryMap.js';
 import {WORKSPACE_CONFIG} from '@/blockly/configs/workspaceConfig.js';
+import '@/blockly/configs/renderer.js'
 
 const broadcastList = ref([]);
 const createNewBroadcast = () => {
