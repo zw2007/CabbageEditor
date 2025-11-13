@@ -1,6 +1,7 @@
 from __future__ import annotations
 import typing as _t
 import logging
+import weakref
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
@@ -58,7 +59,13 @@ def setup_webchannel_for_view(
             if on_message_to_dock is not None:
                 app_service.message_to_dock_requested.connect(on_message_to_dock)
             elif central_manager is not None and hasattr(central_manager, 'send_json_to_dock'):
-                app_service.message_to_dock_requested.connect(lambda name, data: central_manager.send_json_to_dock(name, data))
+                # 使用弱引用避免 lambda 捕获 central_manager 导致引用泄漏
+                cm_ref = weakref.ref(central_manager)
+                def _send_to_dock(name, data, cm_ref=cm_ref):
+                    cm = cm_ref()
+                    if cm is not None:
+                        cm.send_json_to_dock(name, data)
+                app_service.message_to_dock_requested.connect(_send_to_dock)
             if on_command_to_main is not None:
                 app_service.command_to_main_requested.connect(on_command_to_main)
 
@@ -91,14 +98,36 @@ def setup_webchannel_for_view(
 def teardown_webchannel_for_view(view: QWebEngineView, ctx: WebChannelContext) -> None:
     """解除绑定和清理：注销所有注册到 channel 的服务。"""
     try:
-        if ctx and ctx.channel and ctx.services:
-            for obj in ctx.services.values():
+        if ctx and ctx.services:
+            # 清理 AIService 的工作线程
+            ai_service = ctx.services.get('aiService')
+            if ai_service and hasattr(ai_service, 'cleanup'):
                 try:
-                    ctx.channel.deregisterObject(obj)
+                    ai_service.cleanup()
                 except Exception:
+                    logger.exception("清理 AIService 失败")
+
+            # 断开 AppService 的信号连接
+            app_service = ctx.services.get('appService')
+            if app_service:
+                try:
+                    app_service.create_route_requested.disconnect()
+                    app_service.remove_route_requested.disconnect()
+                    app_service.message_to_dock_requested.disconnect()
+                    app_service.command_to_main_requested.disconnect()
+                except (RuntimeError, TypeError):
                     pass
+
+            # 注销所有对象
+            if ctx.channel:
+                for obj in ctx.services.values():
+                    try:
+                        ctx.channel.deregisterObject(obj)
+                    except Exception:
+                        pass
     except Exception:
         pass
+
     try:
         if ctx and ctx.channel:
             ctx.channel.deleteLater()

@@ -272,25 +272,25 @@ class RouteDockWidget(QDockWidget):
         self.setStyleSheet(self.round_corner_stylesheet)
 
     def setup_web_channel(self):
-        def _on_msg_to_dock(routename, json_data):
-            if routename == self.name:
+        def _on_msg_to_dock(route_name, json_data):
+            if route_name == self.name:
                 self.send_message_to_dock(json_data)
 
-        def _on_create_route(routename, routepath, position, floatposition, size):
+        def _on_create_route(route_name, route_path, position, float_position, size):
             """创建新的 Dock - 直接调用 CentralManager"""
             try:
                 if hasattr(self.central_manager, 'create_dock'):
-                    self.central_manager.create_dock(routename, routepath, position, floatposition, size)
+                    self.central_manager.create_dock(route_name, route_path, position, float_position, size)
                 else:
                     logger.error('CentralManager 没有 create_dock 方法')
             except Exception as e:
                 logger.exception('_on_create_route 处理失败')
 
-        def _on_remove_route(routename):
+        def _on_remove_route(route_name):
             """删除 Dock - 直接调用 CentralManager"""
             try:
                 if hasattr(self.central_manager, 'remove_dock'):
-                    self.central_manager.remove_dock(routename)
+                    self.central_manager.remove_dock(route_name)
                 else:
                     logger.error('CentralManager 没有 remove_dock 方法')
             except Exception as e:
@@ -306,14 +306,18 @@ class RouteDockWidget(QDockWidget):
             on_create_route=_on_create_route,
             on_remove_route=_on_remove_route,
             on_message_to_dock=_on_msg_to_dock,
-            extra_objects={"dockBridge": drag_bridge},
+            extra_objects={"dockBridge": drag_bridge}
         )
         self.services = getattr(self._webchannel_ctx, 'services', {}) or {}
 
         # 确保在设置 WebChannel 之后再加载页面，这样前端能拿到 dockBridge
         try:
-            self.browser.loadFinished.connect(lambda ok, name=self.name: self.browser.page().runJavaScript(
-                "window.__dockRouteName = {};".format(json.dumps(name))))
+            # 使用 SingleShotConnection 避免 lambda 捕获 self 导致内存泄漏
+            self.browser.loadFinished.connect(
+                lambda ok, name=self.name: self.browser.page().runJavaScript(
+                    "window.__dockRouteName = {};".format(json.dumps(name))),
+                Qt.ConnectionType.SingleShotConnection
+            )
         except Exception:
             logger.exception('Failed to connect loadFinished')
         self.browser.load(self.url)
@@ -415,6 +419,9 @@ class RouteDockWidget(QDockWidget):
         logger.info("[Dock清理] 开始清理: %s", self.name)
 
         try:
+            # 断开信号连接，防止在清理过程中触发回调
+            self._disconnect_signals()
+
             self._cleanup_webchannel()
             self._cleanup_web_page()
             self._cleanup_profile()
@@ -424,6 +431,27 @@ class RouteDockWidget(QDockWidget):
             logger.info("[Dock清理] 完成清理: %s", self.name)
         except Exception as e:
             logger.exception("[Dock清理] 异常: %s", self.name)
+
+    def _disconnect_signals(self):
+        """断开所有信号连接，防止清理过程中的回调"""
+        try:
+            # 断开 aiService 的信号
+            ai_service = self.services.get("aiService")
+            if ai_service is not None:
+                try:
+                    ai_service.ai_response.disconnect(self.send_ai_message_to_js)
+                    logger.debug("[Dock清理] 已断开 aiService 信号")
+                except (RuntimeError, TypeError):
+                    pass
+        except Exception:
+            pass
+
+        try:
+            # 断开 topLevelChanged 信号
+            self.topLevelChanged.disconnect(self.handle_top_level_change)
+            logger.debug("[Dock清理] 已断开 topLevelChanged 信号")
+        except (RuntimeError, TypeError):
+            pass
 
     def _cleanup_webchannel(self):
         """清理 WebChannel 连接"""
