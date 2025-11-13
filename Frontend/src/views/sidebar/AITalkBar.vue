@@ -135,7 +135,7 @@
 
 <script setup>
 import {ref, onMounted, onUnmounted, computed, nextTick} from 'vue';
-import {useDragResize} from '@/composables/useDragResize';
+import {useDragResize} from '@/components/ui/DragTitleBar.js';
 import DockTitleBar from '@/components/ui/DockTitleBar.vue';
 
 const {dragState, startResize, stopDrag, onDrag, stopResize, onResize} = useDragResize();

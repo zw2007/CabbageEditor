@@ -117,7 +117,7 @@
 <script setup>
 import {ref, onMounted, onUnmounted} from 'vue';
 import {useRoute} from 'vue-router';
-import {useDragResize} from '@/composables/useDragResize';
+import {useDragResize} from '@/components/ui/DragTitleBar.js';
 import DockTitleBar from '@/components/ui/DockTitleBar.vue';
 
 async function waitWebChannel() {

@@ -33,7 +33,7 @@
 
 <script setup>
 import {ref, onMounted, onUnmounted} from 'vue';
-import {useDragResize} from '@/composables/useDragResize';
+import {useDragResize} from '@/components/ui/DragTitleBar.js';
 import {useRouter} from 'vue-router';
 
 const router = useRouter();

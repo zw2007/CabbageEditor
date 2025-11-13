@@ -35,7 +35,7 @@
 
 <script setup>
 import {defineProps, defineEmits} from 'vue';
-import {useDragResize} from '@/composables/useDragResize';
+import {useDragResize} from '@/components/ui/DragTitleBar.js';
 
 const props = defineProps({
   title: { type: String, default: '' },
