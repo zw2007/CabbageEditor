@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from Backend.config.settings import get_settings
+from Backend.artificial_intelligence.config.config import get_app_config
 
 _CONFIGURED = False
 
@@ -12,9 +12,9 @@ def configure_logging() -> None:
     global _CONFIGURED
     if _CONFIGURED:
         return
-    settings = get_settings()
+    config = get_app_config()
     logging.basicConfig(
-        level=getattr(logging, settings.log_level, logging.INFO),
+        level=getattr(logging, config.runtime.log_level, logging.INFO),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     _CONFIGURED = True

@@ -11,23 +11,23 @@
 | `projectService` | Slot `open_file_dialog(scene, type)` | `type` in `model/scene/multimedia` | Wraps file dialog + `SceneApplicationService`; 成功导入模型会额外触发 `sceneService.actor_created`. | |
 |                  | Slot `scene_save(data)` | Scene JSON | Emits `scene_saved` with status + `filepath`. | |
 | `scriptingService` | Slot `execute_python_code(code, index)` | raw python, index | Writes to `Backend/script`, regenerates `runScript.py`. | Path derived from `Settings.paths.script_dir`. |
-| `aiService`      | Slot `send_message_to_ai(payload)` | `{ "message": "<text>" }` | Calls `AIApplicationService.ask`. Emits `ai_response`. | Uses `LLMClient` + MCP tools. |
+| `aiService`      | Slot `send_message_to_ai(payload)` | `{ "message": "<text>" }` | 调用 `Backend.artificial_intelligence.api.handle_user_message`，返回 LangChain Agent 响应。 | Agent 基于 `create_agent(model, tools)`，工具来自 MCP / media / builtin。 |
 
 Signals:  
 `actor_created`, `scene_loaded`, `scene_saved`, `script_error`, `ai_response`, `create_route_requested`, `remove_route_requested`, `message_to_dock_requested`, `command_to_main_requested`.
 
 All payloads are UTF-8 JSON strings. Schema definitions live in `Frontend/src/types/backend.ts`.
 
-### Secret Management
-- 运行 `python Backend/config/cli_secrets.py`，在 `Backend/config/secrets.toml` 中写入 `api_key` / `base_url`。
-- Runtime order: `secrets.toml` > `Backend/config/mcp_client_secrets.json`（旧格式）> `Backend/config/mcp_client_secrets_example.json`。
+### Secret & Config Management
+- 复制 `Backend/artificial_intelligence/config/app_config.example.toml` 为 `app_config.toml`，在 `[secrets]` 段中写入 `api_key` / `base_url`，并按需调整 `[llm]`、`[mcp]`。
+- 也可以在 `~/.coronaengine/app_config.toml` 中覆盖同名字段；环境变量（如 `CORONA_API_KEY`、`CORONA_LLM_MODEL`）拥有最高优先级。
 
 ### Service Composition
 ```
 Frontend (WebChannel)
    -> `window_layout.services.*` (`sceneService`, `projectService`, `aiService`, ...)
-       -> Core services (`engine_core.services.*`, `artificial_intelligence.services.*`)
-           -> Engine runtime (`engine_core` bindings) / AI adapters (`artificial_intelligence`)
+       -> Core services (`engine_core.services.*`) / LangChain Agent (`artificial_intelligence.agent + api`)
+           -> Engine runtime (`engine_core` bindings) / AI adapters (`langchain` agents + MCP 工具)
 ```
 
 Use `Backend/tools/bootstrap.py` to register new services before touching Qt/UI.

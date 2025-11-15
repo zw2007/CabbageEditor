@@ -6,8 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PySide6.QtCore import QObject, Signal, Slot, QTimer
 
 from Backend.utils.bootstrap import bootstrap
-from Backend.artificial_intelligence.services import AIApplicationService
-from Backend.utils.container import get_container
+from Backend.artificial_intelligence.api import handle_user_message
 from Backend.utils.logging import get_logger
 
 bootstrap()
@@ -27,9 +26,7 @@ class AIService(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        container = get_container()
-        self.ai_service: AIApplicationService = container.resolve("ai_service")
-        # 使用线程池执行器来运行阻塞的同步调用
+        # LangChain agent 在后台线程里运行，避免阻塞 UI 事件循环
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="AI_")
         # 创建一个新的事件循环用于协程
         self._loop = asyncio.new_event_loop()
@@ -66,11 +63,7 @@ class AIService(QObject):
             query = msg_data.get("message", "")
 
             # 在线程池中执行阻塞的 AI 调用
-            result = await self._loop.run_in_executor(
-                self._executor,
-                self.ai_service.ask,
-                query
-            )
+            result = await self._loop.run_in_executor(self._executor, handle_user_message, query)
 
             # 发送响应信号
             self.ai_response.emit(result)
