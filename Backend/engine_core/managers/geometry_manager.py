@@ -136,6 +136,7 @@ def print_state() -> None:
 # ============================================================================
 class GeometryManager:
     """向后兼容的类包装器，内部调用 DOP 函数"""
+
     @staticmethod
     def create(name: str, model_path: str) -> Geometry:
         return create(name, model_path)
@@ -167,4 +168,3 @@ class GeometryManager:
     @staticmethod
     def clear() -> None:
         return clear()
-

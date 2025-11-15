@@ -135,6 +135,7 @@ def print_state() -> None:
 # ============================================================================
 class ViewportManager:
     """向后兼容的类包装器，内部调用 DOP 函数"""
+
     @staticmethod
     def create(name: str, width: int, height: int, light_field: bool = False) -> Viewport:
         return create(name, width, height, light_field)
@@ -166,4 +167,3 @@ class ViewportManager:
     @staticmethod
     def clear() -> None:
         return clear()
-

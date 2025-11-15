@@ -120,6 +120,7 @@ def print_state() -> None:
 # ============================================================================
 class CameraManager:
     """向后兼容的类包装器，内部调用 DOP 函数"""
+
     @staticmethod
     def create(name: str, **kwargs) -> Camera:
         return create(name, **kwargs)
@@ -151,4 +152,3 @@ class CameraManager:
     @staticmethod
     def clear() -> None:
         return clear()
-

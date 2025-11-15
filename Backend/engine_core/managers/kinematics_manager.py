@@ -142,6 +142,7 @@ def print_state() -> None:
 # ============================================================================
 class KinematicsManager:
     """向后兼容的类包装器，内部调用 DOP 函数"""
+
     @staticmethod
     def create(name: str, geometry: Geometry) -> Kinematics:
         return create(name, geometry)
@@ -173,4 +174,3 @@ class KinematicsManager:
     @staticmethod
     def clear() -> None:
         return clear()
-

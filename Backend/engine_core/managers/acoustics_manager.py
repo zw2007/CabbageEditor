@@ -146,6 +146,7 @@ def print_state() -> None:
 # ============================================================================
 class AcousticsManager:
     """向后兼容的类包装器，内部调用 DOP 函数"""
+
     @staticmethod
     def create(name: str, geometry: Geometry) -> Acoustics:
         return create(name, geometry)
@@ -177,4 +178,3 @@ class AcousticsManager:
     @staticmethod
     def clear() -> None:
         return clear()
-

@@ -86,4 +86,3 @@ class Geometry:
 
     def __repr__(self):
         return f"Geometry(name={self.name}, path={self.model_path})"
-

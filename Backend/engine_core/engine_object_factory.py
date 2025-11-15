@@ -30,10 +30,10 @@ class EngineObjectFactory:
 
     @classmethod
     def _get_or_create(
-        cls,
-        cache: Dict[str, T],
-        key: str,
-        factory: Callable[[], T]
+            cls,
+            cache: Dict[str, T],
+            key: str,
+            factory: Callable[[], T]
     ) -> T:
         """
         通用缓存获取或创建逻辑
@@ -153,4 +153,3 @@ class EngineObjectFactory:
             cls._actor_cache.clear()
         if cache_type in ("camera", "all"):
             cls._camera_cache.clear()
-
