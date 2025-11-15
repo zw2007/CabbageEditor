@@ -12,6 +12,10 @@ class AppService(QObject):
     command_to_main_requested = Signal(str, str)
     actor_operation_requested = Signal(str)
 
+    # Aliases (non-breaking): prefer "dock" wording in new code, re-use existing signals
+    create_dock_requested = create_route_requested
+    remove_dock_requested = remove_route_requested
+
     @Slot(str, str, str, str, str)
     def add_dock_widget(self, routename: str, routepath: str, position: str = "left", floatposition: str = "None",
                         size: str | None = None) -> None:
@@ -21,9 +25,15 @@ class AppService(QObject):
             size_obj = None
         self.create_route_requested.emit(routename, routepath, position, floatposition, size_obj)
 
+    # Provide a convenience alias method name
+    add_dock = add_dock_widget
+
     @Slot(str)
     def remove_dock_widget(self, routename: str) -> None:
         self.remove_route_requested.emit(routename)
+
+    # alias
+    remove_dock = remove_dock_widget
 
     @Slot(str, str)
     def send_message_to_dock(self, routename: str, json_data: str) -> None:
@@ -41,3 +51,7 @@ class AppService(QObject):
     @Slot(str, str)
     def send_message_to_main(self, command_name: str, command_data: str) -> None:
         self.command_to_main_requested.emit(command_name, command_data)
+
+    # alias for clarity
+    send_command = send_command_to_main
+    send_message = send_message_to_main

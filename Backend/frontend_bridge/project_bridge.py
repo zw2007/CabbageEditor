@@ -6,7 +6,7 @@ from Backend.utils.bootstrap import bootstrap
 from Backend.utils.project_service import ProjectApplicationService
 from Backend.utils import FileHandler
 from Backend.utils.container import get_container
-from .scene import SceneService
+from .scene_bridge import SceneService
 
 bootstrap()
 

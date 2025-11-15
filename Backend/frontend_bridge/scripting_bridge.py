@@ -1,8 +1,11 @@
 from __future__ import annotations
 import os
 import json
+import logging
 from PySide6.QtCore import QObject, Signal, Slot
 from Backend.config.settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class ScriptingService(QObject):
@@ -39,8 +42,8 @@ class ScriptingService(QObject):
 
             with open(run_script_path, "w", encoding="utf-8") as f:
                 f.write(run_script_content)
-            print(f"[DEBUG] 脚本文件创建成功: {filepath}")
-            print(f"[DEBUG] runScript.py创建/覆盖成功: {run_script_path}")
+            logger.debug(f"脚本文件创建成功: {filepath}")
+            logger.debug(f"runScript.py创建/覆盖成功: {run_script_path}")
 
             try:
                 for sf in script_files:
@@ -56,7 +59,7 @@ class ScriptingService(QObject):
             except Exception:
                 pass
         except Exception as e:
-            print(f"[ERROR] 执行Python代码时出错: {str(e)}")
+            logger.exception("执行Python代码时出错: %s", str(e))
             error_response = {
                 "status": "error",
                 "message": str(e),
@@ -65,4 +68,3 @@ class ScriptingService(QObject):
                 self.script_error.emit(json.dumps(error_response))
             except Exception:
                 pass
-
