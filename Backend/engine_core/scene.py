@@ -87,5 +87,11 @@ class Scene:
     def get_actors(self) -> List[Actor]:
         return self._actors.copy()
 
+    def get_actor(self, actor_name: str) -> Optional[Actor]:
+        for actor in self._actors:
+            if actor.name == actor_name:
+                return actor
+        return None
+
 
 

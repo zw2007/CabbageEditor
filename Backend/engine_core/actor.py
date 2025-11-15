@@ -69,13 +69,45 @@ class Actor:
         if not hasattr(self, '_geometry'):
             raise RuntimeError("当前 Actor 没有 Geometry")
         pos = self._geometry.get_position()
-        self._geometry.set_position([pos[0] + v[0], pos[1] + v[1], pos[2] + v[2]])
+        new_pos = [pos[0] + v[0], pos[1] + v[1], pos[2] + v[2]]
+        print(f"[Actor.move] {self.name}: {pos} → {new_pos}")
+        self._geometry.set_position(new_pos)
 
     def rotate(self, euler: List[float]):
         if not hasattr(self, '_geometry'):
             raise RuntimeError("当前 Actor 没有 Geometry")
         rot = self._geometry.get_rotation()
         self._geometry.set_rotation([rot[0] + euler[0], rot[1] + euler[1], rot[2] + euler[2]])
+
+    def set_position(self, position: List[float]):
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        self._geometry.set_position(position)
+
+    def get_position(self) -> List[float]:
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        return self._geometry.get_position()
+
+    def set_rotation(self, euler: List[float]):
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        self._geometry.set_rotation(euler)
+
+    def get_rotation(self) -> List[float]:
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        return self._geometry.get_rotation()
+
+    def set_scale(self, scale: List[float]):
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        self._geometry.set_scale(scale)
+
+    def get_scale(self) -> List[float]:
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        return self._geometry.get_scale()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
