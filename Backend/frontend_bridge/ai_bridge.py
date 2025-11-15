@@ -7,6 +7,8 @@ from PySide6.QtCore import QObject, Signal, Slot, QTimer
 
 from Backend.utils.bootstrap import bootstrap
 from Backend.artificial_intelligence.api import handle_user_message
+from Backend.artificial_intelligence.config.config import get_app_config
+from Backend.artificial_intelligence.models import get_chat_model
 from Backend.utils.logging import get_logger
 
 bootstrap()
@@ -19,6 +21,27 @@ def _format_exception(exc: BaseException) -> str:
         return "; ".join(filter(None, parts))
     return str(exc) or exc.__class__.__name__
 
+
+def _warmup_llm_connection() -> None:
+    """后台线程执行最小 LLM 请求，提前建立连接。"""
+    try:
+        cfg = get_app_config()
+        chat_cfg = cfg.chat
+        llm = get_chat_model(
+            cfg,
+            provider_name=chat_cfg.provider,
+            model_name=chat_cfg.model,
+            temperature=chat_cfg.temperature,
+            request_timeout=chat_cfg.request_timeout,
+        )
+        warmup_prompt = [
+            {"role": "system", "content": "预热：请忽略此消息。"},
+            {"role": "user", "content": "ping"},
+        ]
+        llm.invoke(warmup_prompt)
+        logger.debug("LLM warmup completed")
+    except Exception as exc:
+        logger.debug("LLM warmup skipped: %s", exc)
 
 
 class AIService(QObject):
@@ -37,6 +60,9 @@ class AIService(QObject):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._process_event_loop)
         self._timer.start(10)  # 每 10ms 处理一次事件循环
+
+        # 预热 LLM 连接，避免首轮对话长时间握手
+        self._executor.submit(_warmup_llm_connection)
 
     def _process_event_loop(self) -> None:
         """处理 asyncio 事件循环（由 QTimer 定期调用）"""
