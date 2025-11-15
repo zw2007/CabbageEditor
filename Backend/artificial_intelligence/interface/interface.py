@@ -1,14 +1,12 @@
-from __future__ import annotations
 
+from __future__ import annotations
 import json
 import time
 from typing import Any, Dict, List
-
 from langchain_core.messages import BaseMessage, AIMessage
-
-from Backend.artificial_intelligence.agent import create_default_agent
+from Backend.artificial_intelligence.agent.factory import create_default_agent
 from Backend.artificial_intelligence.config.config import get_app_config
-from Backend.artificial_intelligence.models import get_chat_model
+from Backend.artificial_intelligence.models.models import get_chat_model
 
 _CONVERSATION: List[Dict[str, Any]] = []
 
@@ -52,9 +50,6 @@ def handle_user_message(message: str) -> str:
         "timestamp": int(time.time()),
     }
     return json.dumps(payload, ensure_ascii=False)
-
-
-__all__ = ["invoke_messages", "handle_user_message"]
 
 
 def _fallback_completion(history: List[Dict[str, Any]]) -> str:
