@@ -4,7 +4,7 @@ import json
 import time
 from typing import Any, Dict, List
 from langchain_core.messages import BaseMessage, AIMessage
-from Backend.artificial_intelligence.agent.factory import create_default_agent
+from Backend.artificial_intelligence.agent.agent import create_default_agent
 from Backend.artificial_intelligence.config.config import get_app_config
 from Backend.artificial_intelligence.models.models import get_chat_model
 
