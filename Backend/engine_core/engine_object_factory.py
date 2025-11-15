@@ -10,8 +10,8 @@ if CoronaEngine is None:
 else:
     print("[EngineObjectFactory] 使用 CoronaEngine / CoronaEngineFallback")
 
-from .actor import Actor
-from .camera import Camera
+from .entities.actor import Actor
+from .entities.camera import Camera
 
 T = TypeVar('T')
 

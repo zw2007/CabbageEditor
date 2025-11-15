@@ -1,11 +1,11 @@
 from typing import List, Any, Optional
-from .geometry import Geometry
+from ..components.geometry import Geometry
 from .actor import Actor
 from .camera import Camera
 from .environment import Environment
 from .viewport import Viewport
 
-from .engine_import import load_corona_engine
+from ..engine_import import load_corona_engine
 CoronaEngine = load_corona_engine()
 
 

@@ -1,5 +1,5 @@
-﻿from typing import Any, Dict
-from .engine_import import load_corona_engine
+from typing import Any, Dict
+from ..engine_import import load_corona_engine
 from .geometry import Geometry
 CoronaEngine = load_corona_engine()
 class Kinematics:
