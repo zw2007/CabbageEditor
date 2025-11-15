@@ -24,9 +24,9 @@ class RenderWidget(QWidget):
         # 创建相机并加入场景（OOP API）
         try:
             self.camera = Camera(
-                position=[0.0, 5.0, 0.0],
-                forward=[0.0, 1.0, 0.0],
-                world_up=[1.0, 0.0, 0.0],
+                position=[0.0, 0.0, 5.0],
+                forward=[0.0, 0.0, 1.0],
+                world_up=[0.0, -1.0, 0.0],
                 fov=45.0,
                 name="MainCamera"
             )
