@@ -5,11 +5,13 @@ Viewport Manager - Data-Oriented Programming (DOP) 风格
 from __future__ import annotations
 from typing import Optional, List, Dict
 from ..entities.viewport import Viewport
+from . import camera_manager
 
 # ============================================================================
 # 数据存储：模块级字典
 # ============================================================================
 _viewports: Dict[str, Viewport] = {}
+_viewport_attached_camera: Dict[str, str] = {}
 
 
 # ============================================================================
@@ -62,20 +64,50 @@ def get_or_create(name: str, width: int = 1920, height: int = 1080, light_field:
     return create(name, width, height, light_field)
 
 
+def attach_camera(viewport_name: str, camera_name: str) -> None:
+    """将相机附加到视口"""
+    vp = get(viewport_name)
+    cam = camera_manager.get(camera_name)
+    if vp is None or cam is None:
+        raise ValueError("Viewport 或 Camera 不存在")
+    # 如果已有相机，先解绑旧依赖（通过名称映射而非对象比较）
+    old_cam_name = _viewport_attached_camera.get(viewport_name)
+    if old_cam_name:
+        camera_manager.unregister_viewport_dependency(old_cam_name, viewport_name)
+    vp.set_camera(cam)
+    camera_manager.register_viewport_dependency(camera_name, viewport_name)
+    _viewport_attached_camera[viewport_name] = camera_name
+
+
+def detach_camera(viewport_name: str) -> None:
+    """从视口移除相机"""
+    vp = get(viewport_name)
+    if vp is None:
+        return
+    old_cam_name = _viewport_attached_camera.pop(viewport_name, None)
+    if old_cam_name:
+        camera_manager.unregister_viewport_dependency(old_cam_name, viewport_name)
+    vp.remove_camera()
+
+
 # ============================================================================
 # 删除操作：修改数据
 # ============================================================================
 def remove(name: str) -> bool:
     """删除指定名称的 Viewport"""
-    if name in _viewports:
-        del _viewports[name]
-        return True
-    return False
+    if name not in _viewports:
+        return False
+    # 从相机依赖中注销
+    detach_camera(name)
+    _viewport_attached_camera.pop(name, None)
+    del _viewports[name]
+    return True
 
 
 def clear() -> None:
     """清空所有 Viewport"""
-    _viewports.clear()
+    for n in list_all():
+        remove(n)
 
 
 # ============================================================================
@@ -127,7 +159,14 @@ def print_state() -> None:
     print(f"[ViewportManager] Total: {count()}")
     for name in list_all():
         vp = get(name)
-        print(f"  - {name}: {vp.width_}x{vp.height_}")
+        if vp is None:
+            continue
+        try:
+            w = getattr(vp, 'width_', None) or vp.get_size()[0]
+            h = getattr(vp, 'height_', None) or vp.get_size()[1]
+        except Exception:
+            w = h = 'N/A'
+        print(f"  - {name}: {w}x{h}")
 
 
 # ============================================================================
@@ -151,6 +190,14 @@ class ViewportManager:
     @staticmethod
     def get_or_create(name: str, width: int = 1920, height: int = 1080, light_field: bool = False) -> Viewport:
         return get_or_create(name, width, height, light_field)
+
+    @staticmethod
+    def attach_camera(viewport_name: str, camera_name: str) -> None:
+        return attach_camera(viewport_name, camera_name)
+
+    @staticmethod
+    def detach_camera(viewport_name: str) -> None:
+        return detach_camera(viewport_name)
 
     @staticmethod
     def remove(name: str) -> bool:

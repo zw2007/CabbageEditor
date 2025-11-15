@@ -7,9 +7,29 @@ from typing import Optional, List, Dict
 from ..entities.camera import Camera
 
 # ============================================================================
-# 数据存储：模块级字典
+# 数据存储：模块级字典 + 依赖登记（camera -> [viewport_names]）
 # ============================================================================
 _cameras: Dict[str, Camera] = {}
+_dependents: Dict[str, List[str]] = {}
+
+
+# 依赖登记接口（供 ViewportManager 调用）
+def register_viewport_dependency(camera_name: str, viewport_name: str) -> None:
+    deps = _dependents.setdefault(camera_name, [])
+    if viewport_name not in deps:
+        deps.append(viewport_name)
+
+
+def unregister_viewport_dependency(camera_name: str, viewport_name: str) -> None:
+    deps = _dependents.get(camera_name)
+    if not deps:
+        return
+    try:
+        deps.remove(viewport_name)
+    except ValueError:
+        pass
+    if not deps:
+        _dependents.pop(camera_name, None)
 
 
 # ============================================================================
@@ -63,19 +83,37 @@ def get_or_create(name: str, **kwargs) -> Camera:
 
 
 # ============================================================================
-# 删除操作：修改数据
+# 删除操作：修改数据（包含级联解绑）
 # ============================================================================
+def _detach_from_all_viewports(camera_name: str) -> None:
+    # 为避免循环依赖，在函数内导入
+    try:
+        from . import viewport_manager as _vp
+    except Exception:
+        _vp = None
+    for vp_name in list(_dependents.get(camera_name, []) or []):
+        if _vp is not None:
+            try:
+                _vp.detach_camera(vp_name)
+            except Exception:
+                pass
+        unregister_viewport_dependency(camera_name, vp_name)
+
+
 def remove(name: str) -> bool:
     """删除指定名称的 Camera"""
-    if name in _cameras:
-        del _cameras[name]
-        return True
-    return False
+    if name not in _cameras:
+        return False
+    # 先从所有视口解绑
+    _detach_from_all_viewports(name)
+    del _cameras[name]
+    return True
 
 
 def clear() -> None:
-    """清空所有 Camera"""
-    _cameras.clear()
+    """清空所有 Camera（含解绑）"""
+    for n in list_all():
+        remove(n)
 
 
 # ============================================================================
@@ -112,7 +150,7 @@ def print_state() -> None:
     print(f"[CameraManager] Total: {count()}")
     for name in list_all():
         cam = get(name)
-        print(f"  - {name}: {cam}")
+        print(f"  - {name}: dependents={_dependents.get(name, [])}")
 
 
 # ============================================================================

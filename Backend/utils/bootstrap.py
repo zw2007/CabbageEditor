@@ -4,7 +4,7 @@ from .scene_service import SceneApplicationService
 from .project_service import ProjectApplicationService
 from Backend.artificial_intelligence.services import AIApplicationService
 from Backend.artificial_intelligence.adapters import MCPToolAdapter
-from Backend.engine_core.scene_manager import SceneManager
+from Backend.engine_core.managers.scene_manager import SceneManager
 from Backend.artificial_intelligence.foundation_api import LLMClient
 from Backend.artificial_intelligence.mcp import server as mcp_server
 from Backend.utils.container import get_container

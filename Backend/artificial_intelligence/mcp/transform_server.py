@@ -5,7 +5,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, AsyncIterator
 
-from Backend.engine_core.scene_manager import SceneManager
+from Backend.engine_core.managers.scene_manager import SceneManager
 from Backend.frontend_bridge.app_bridge import AppService
 
 logging.basicConfig(level=logging.INFO)

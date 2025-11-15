@@ -1,16 +1,18 @@
 """
-Optics Manager - Data-Oriented Programming (DOP) 风格
-数据和操作分离，使用纯函数管理 Optics 组件资源
+Optics Manager - DOP 风格
 """
 from __future__ import annotations
 from typing import Optional, List, Dict
+
 from ..components.optics import Optics
 from ..components.geometry import Geometry
+from . import geometry_manager
 
 # ============================================================================
 # 数据存储：模块级字典
 # ============================================================================
 _optics: Dict[str, Optics] = {}
+_attached_geometry: Dict[str, Geometry] = {}
 
 
 # ============================================================================
@@ -43,23 +45,27 @@ def create(name: str, geometry: Geometry) -> Optics:
     """创建新的 Optics 组件"""
     if name in _optics:
         raise ValueError(f"Optics '{name}' already exists")
-    optics = Optics(geometry)
-    _optics[name] = optics
-    return optics
+    opt = Optics(geometry)
+    _optics[name] = opt
+    _attached_geometry[name] = geometry
+    geometry_manager.register_dependency(geometry, 'optics', name)
+    return opt
 
 
-def register(name: str, optics: Optics) -> None:
+def register(name: str, optics: Optics, geometry: Geometry) -> None:
     """注册已存在的 Optics"""
     if name in _optics:
         raise ValueError(f"Optics '{name}' already registered")
     _optics[name] = optics
+    _attached_geometry[name] = geometry
+    geometry_manager.register_dependency(geometry, 'optics', name)
 
 
 def get_or_create(name: str, geometry: Geometry) -> Optics:
     """获取或创建 Optics（推荐）"""
-    existing = get(name)
-    if existing is not None:
-        return existing
+    exist = get(name)
+    if exist is not None:
+        return exist
     return create(name, geometry)
 
 
@@ -68,61 +74,50 @@ def get_or_create(name: str, geometry: Geometry) -> Optics:
 # ============================================================================
 def remove(name: str) -> bool:
     """删除指定名称的 Optics"""
-    if name in _optics:
-        del _optics[name]
-        return True
-    return False
+    if name not in _optics:
+        return False
+    opt = _optics.pop(name)
+    geo = _attached_geometry.pop(name, None)
+    if isinstance(geo, Geometry):
+        geometry_manager.unregister_dependency(geo, 'optics', name)
+    return True
 
 
 def clear() -> None:
     """清空所有 Optics"""
-    _optics.clear()
+    for n in list_all():
+        remove(n)
 
 
 # ============================================================================
 # 批量操作
 # ============================================================================
-def create_batch(optics_configs: Dict[str, Geometry]) -> List[Optics]:
+def create_batch(configs: Dict[str, Geometry]) -> List[Optics]:
     """批量创建 Optics
 
     Args:
-        optics_configs: {name: geometry} 字典
+        configs: {name: geometry} 字典
     """
-    results = []
-    for name, geo in optics_configs.items():
-        opt = get_or_create(name, geo)
-        results.append(opt)
-    return results
+    res: List[Optics] = []
+    for n, g in configs.items():
+        res.append(get_or_create(n, g))
+    return res
 
 
 def remove_batch(names: List[str]) -> int:
     """批量删除 Optics，返回删除的数量"""
-    count_deleted = 0
-    for name in names:
-        if remove(name):
-            count_deleted += 1
-    return count_deleted
-
-
-def filter_by_geometry(geometry: Geometry) -> List[Optics]:
-    """根据 Geometry 筛选 Optics"""
-    return [opt for opt in _optics.values() if hasattr(opt, 'geometry_') and opt.geometry_ == geometry]
-
-
-# ============================================================================
-# 调试与监控
-# ============================================================================
-def get_all() -> Dict[str, Optics]:
-    """获取所有 Optics（用于调试）"""
-    return _optics.copy()
+    c = 0
+    for n in names:
+        if remove(n):
+            c += 1
+    return c
 
 
 def print_state() -> None:
     """打印当前状态（用于调试）"""
     print(f"[OpticsManager] Total: {count()}")
-    for name in list_all():
-        opt = get(name)
-        print(f"  - {name}: {opt}")
+    for n, o in _optics.items():
+        print(f"  - {n}: geo={getattr(o, '_geo', None)}")
 
 
 # ============================================================================
@@ -136,8 +131,8 @@ class OpticsManager:
         return create(name, geometry)
 
     @staticmethod
-    def register(name: str, optics: Optics) -> None:
-        return register(name, optics)
+    def register(name: str, optics: Optics, geometry: Geometry) -> None:
+        return register(name, optics, geometry)
 
     @staticmethod
     def get(name: str) -> Optional[Optics]:
@@ -150,14 +145,6 @@ class OpticsManager:
     @staticmethod
     def remove(name: str) -> bool:
         return remove(name)
-
-    @staticmethod
-    def list() -> List[str]:
-        return list_all()
-
-    @staticmethod
-    def has(name: str) -> bool:
-        return has(name)
 
     @staticmethod
     def clear() -> None:

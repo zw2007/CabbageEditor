@@ -3,43 +3,69 @@ Geometry Manager - Data-Oriented Programming (DOP) 风格
 数据和操作分离，使用纯函数管理 Geometry 资源
 """
 from __future__ import annotations
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
+
 from ..components.geometry import Geometry
+from . import optics_manager, mechanics_manager, kinematics_manager, acoustics_manager
 
 # ============================================================================
-# 数据存储：模块级字典
+# 数据存储：模块级字典 + 依赖登记
 # ============================================================================
 _geometries: Dict[str, Geometry] = {}
+# 依赖登记：以 geometry 对象 id 为 key，记录依赖的组件 (kind, name)
+_dependencies: Dict[int, List[Tuple[str, str]]] = {}
+
+
+def _key(geo: Geometry) -> int:
+    return id(geo)
+
+
+def register_dependency(geometry: Geometry, kind: str, name: str) -> None:
+    deps = _dependencies.setdefault(_key(geometry), [])
+    entry = (kind, name)
+    if entry not in deps:
+        deps.append(entry)
+
+
+def unregister_dependency(geometry: Geometry, kind: str, name: str) -> None:
+    deps = _dependencies.get(_key(geometry))
+    if not deps:
+        return
+    try:
+        deps.remove((kind, name))
+    except ValueError:
+        pass
+    if not deps:
+        _dependencies.pop(_key(geometry), None)
 
 
 # ============================================================================
 # 查询操作：纯函数
 # ============================================================================
 def get(name: str) -> Optional[Geometry]:
-    """获取指定名称的 Geometry"""
     return _geometries.get(name)
 
 
 def has(name: str) -> bool:
-    """检查 Geometry 是否存在"""
     return name in _geometries
 
 
 def list_all() -> List[str]:
-    """列出所有 Geometry 名称"""
     return list(_geometries.keys())
 
 
 def count() -> int:
-    """获取 Geometry 总数"""
     return len(_geometries)
 
 
+def get_all() -> Dict[str, Geometry]:
+    return _geometries.copy()
+
+
 # ============================================================================
-# 创建操作：修改数据
+# 创建/注册：修改数据
 # ============================================================================
 def create(name: str, model_path: str) -> Geometry:
-    """创建新的 Geometry"""
     if name in _geometries:
         raise ValueError(f"Geometry '{name}' already exists")
     geo = Geometry(model_path, name=name)
@@ -48,14 +74,12 @@ def create(name: str, model_path: str) -> Geometry:
 
 
 def register(name: str, geometry: Geometry) -> None:
-    """注册已存在的 Geometry"""
     if name in _geometries:
         raise ValueError(f"Geometry '{name}' already registered")
     _geometries[name] = geometry
 
 
 def get_or_create(name: str, model_path: str) -> Geometry:
-    """获取或创建 Geometry（推荐）"""
     existing = get(name)
     if existing is not None:
         return existing
@@ -63,80 +87,80 @@ def get_or_create(name: str, model_path: str) -> Geometry:
 
 
 # ============================================================================
-# 删除操作：修改数据
+# 删除/清理：支持对象级与名称级；包含级联
 # ============================================================================
+def _cascade_remove_for(geo: Geometry) -> None:
+    # 读取依赖，并逐类移除
+    deps = list(_dependencies.get(_key(geo), []) or [])
+    for kind, comp_name in deps:
+        if kind == 'optics':
+            optics_manager.remove(comp_name)
+        elif kind == 'mechanics':
+            mechanics_manager.remove(comp_name)
+        elif kind == 'kinematics':
+            kinematics_manager.remove(comp_name)
+        elif kind == 'acoustics':
+            acoustics_manager.remove(comp_name)
+    # 清空依赖登记
+    _dependencies.pop(_key(geo), None)
+
+
 def remove(name: str) -> bool:
-    """删除指定名称的 Geometry"""
-    if name in _geometries:
-        del _geometries[name]
-        return True
-    return False
+    if name not in _geometries:
+        return False
+    geo = _geometries.pop(name)
+    _cascade_remove_for(geo)
+    return True
+
+
+def remove_by_object(geometry: Geometry) -> bool:
+    # 允许通过对象直接移除（便于外部释放时调用）
+    to_delete = None
+    for n, g in _geometries.items():
+        if g is geometry:
+            to_delete = n
+            break
+    if to_delete is None:
+        # 名称字典中未注册，仍尝试清理依赖登记
+        _cascade_remove_for(geometry)
+        return False
+    return remove(to_delete)
 
 
 def clear() -> None:
-    """清空所有 Geometry"""
-    _geometries.clear()
+    # 清理全部，同时级联相关组件
+    for name in list_all():
+        remove(name)
 
 
 # ============================================================================
-# 批量操作
+# 批量与调试
 # ============================================================================
 def create_batch(geometry_configs: Dict[str, str]) -> List[Geometry]:
-    """批量创建 Geometry
-
-    Args:
-        geometry_configs: {name: model_path} 字典
-    """
-    results = []
+    results: List[Geometry] = []
     for name, path in geometry_configs.items():
-        geo = get_or_create(name, path)
-        results.append(geo)
+        results.append(get_or_create(name, path))
     return results
 
 
 def remove_batch(names: List[str]) -> int:
-    """批量删除 Geometry，返回删除的数量"""
-    count_deleted = 0
-    for name in names:
-        if remove(name):
-            count_deleted += 1
-    return count_deleted
-
-
-def filter_by_path(path_pattern: str) -> List[Geometry]:
-    """根据路径模式筛选 Geometry"""
-    return [geo for geo in _geometries.values() if path_pattern in geo.model_path]
-
-
-def move_all(delta: List[float]) -> None:
-    """移动所有 Geometry"""
-    for geo in _geometries.values():
-        pos = geo.get_position()
-        geo.set_position([pos[0] + delta[0], pos[1] + delta[1], pos[2] + delta[2]])
-
-
-# ============================================================================
-# 调试与监控
-# ============================================================================
-def get_all() -> Dict[str, Geometry]:
-    """获取所有 Geometry（用于调试）"""
-    return _geometries.copy()
+    cnt = 0
+    for n in names:
+        if remove(n):
+            cnt += 1
+    return cnt
 
 
 def print_state() -> None:
-    """打印当前状态（用于调试）"""
-    print(f"[GeometryManager] Total: {count()}")
-    for name in list_all():
-        geo = get(name)
-        print(f"  - {name}: {geo.model_path}, pos={geo.get_position()}")
+    print(f"[GeometryManager] Total: {count()} | deps={len(_dependencies)}")
+    for name, geo in _geometries.items():
+        print(f"  - {name}: pos={geo.get_position()} deps={_dependencies.get(_key(geo), [])}")
 
 
 # ============================================================================
-# 向后兼容：类包装器（可选）
+# 向后兼容类包装器
 # ============================================================================
 class GeometryManager:
-    """向后兼容的类包装器，内部调用 DOP 函数"""
-
     @staticmethod
     def create(name: str, model_path: str) -> Geometry:
         return create(name, model_path)
@@ -158,13 +182,9 @@ class GeometryManager:
         return remove(name)
 
     @staticmethod
-    def list() -> List[str]:
-        return list_all()
-
-    @staticmethod
-    def has(name: str) -> bool:
-        return has(name)
-
-    @staticmethod
     def clear() -> None:
         return clear()
+
+    @staticmethod
+    def list() -> List[str]:
+        return list_all()
