@@ -1,6 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional, List
 import os
 
+from .geometry import Geometry
+from .mechanics import Mechanics
+from .kinematics import Kinematics
+from .optics import Optics
 from .engine_import import load_corona_engine
 
 CoronaEngine = load_corona_engine()
@@ -8,58 +12,72 @@ CoronaEngine = load_corona_engine()
 
 class Actor:
     """
-    Actor 包装类，代表场景中的一个可渲染对象
-
-    使用方式：
-        actor = Actor("path/to/model.obj")
-        scene.add_actor(actor)
+    OOP API 包装：基于 CoronaEngine.Actor。
+    - 构造可选传入模型路径：自动创建 Geometry + 默认组件，组装成 Profile 加入 Actor
+    - move/rotate/scale 改为作用于 active profile 的 Geometry（不再调用原生的旧接口）
     """
 
-    def __init__(self, path: str):
-        """
-        创建 Actor 对象
-
-        Args:
-            path: 模型文件路径
-        """
+    def __init__(self, path: Optional[str] = None):
         if CoronaEngine is None:
             raise RuntimeError("CoronaEngine 未初始化")
 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"模型文件不存在: {path}")
-
-        # 调用 C++ API: CoronaEngine.Actor(path)
         ActorCtor = getattr(CoronaEngine, 'Actor', None)
         if ActorCtor is None:
             raise RuntimeError("CoronaEngine 未提供 Actor 构造器")
 
-        self.engine_obj = ActorCtor(path)
-        self.path = path
-        self.name = os.path.basename(path)
+        self.engine_obj = ActorCtor()
+        self.path = path or ""
+        self.name = os.path.basename(path) if path else "Actor"
 
-    def scale(self, v):
-        """缩放 Actor"""
-        try:
-            self.engine_obj.scale(v)
-        except Exception as e:
-            raise RuntimeError(f"Actor.scale 失败: {e}") from e
+        # 若提供了模型路径，则创建默认 Profile
+        if path:
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"模型文件不存在: {path}")
 
-    def move(self, v):
-        """移动 Actor"""
-        try:
-            self.engine_obj.move(v)
-        except Exception as e:
-            raise RuntimeError(f"Actor.move 失败: {e}") from e
+            ActorProfile = getattr(CoronaEngine, 'ActorProfile', None)
+            if ActorProfile is None:
+                raise RuntimeError("CoronaEngine 未提供 ActorProfile 类型")
 
-    def rotate(self, v):
-        """旋转 Actor"""
-        try:
-            self.engine_obj.rotate(v)
-        except Exception as e:
-            raise RuntimeError(f"Actor.rotate 失败: {e}") from e
+            # 使用包装类创建组件
+            # 重要：必须保持对包装对象的引用，否则析构时会从 SharedDataHub 中移除
+            self._geometry = Geometry(path)
+            self._optics = Optics(self._geometry)
+            # 可选组件（按需创建）
+            # self._mechanics = Mechanics(self._geometry)
+            # self._kinematics = Kinematics(self._geometry)
+            # self._acoustics = Acoustics(self._geometry)
+
+            prof = ActorProfile()
+            prof.geometry = self._geometry.engine_obj
+            prof.optics = self._optics.engine_obj
+            # prof.mechanics = self._mechanics.engine_obj if hasattr(self, '_mechanics') else None
+            # prof.kinematics = self._kinematics.engine_obj if hasattr(self, '_kinematics') else None
+            # prof.acoustics = self._acoustics.engine_obj if hasattr(self, '_acoustics') else None
+
+            stored = self.engine_obj.add_profile(prof)
+            if stored is None:
+                raise RuntimeError("无法向 Actor 添加默认 Profile（几何/组件不一致）")
+            self.engine_obj.set_active_profile(stored)
+
+    # 兼容编辑器的变换操作：直接作用于几何体
+    def scale(self, v: List[float]):
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        self._geometry.set_scale(v)
+
+    def move(self, v: List[float]):
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        pos = self._geometry.get_position()
+        self._geometry.set_position([pos[0] + v[0], pos[1] + v[1], pos[2] + v[2]])
+
+    def rotate(self, euler: List[float]):
+        if not hasattr(self, '_geometry'):
+            raise RuntimeError("当前 Actor 没有 Geometry")
+        rot = self._geometry.get_rotation()
+        self._geometry.set_rotation([rot[0] + euler[0], rot[1] + euler[1], rot[2] + euler[2]])
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典表示"""
         return {
             "name": self.name,
             "path": self.path,
@@ -67,18 +85,4 @@ class Actor:
         }
 
     def __repr__(self):
-        return f"Actor(name={self.name}, path={self.path})"
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Compatibility helper that returns a dict similar to the old structure.
-        Keys: name, path, engine_obj (or 'actor' in some callers).
-        """
-        return {
-            'name': self.name,
-            'path': self.path,
-            'engine_obj': self.engine_obj,
-            'actor': self.engine_obj,
-        }
-
-    def __repr__(self) -> str:
-        return f"<Actor name={self.name} path={self.path} engine_obj={repr(self.engine_obj)}>"
+        return f"<Actor name={self.name} path={self.path}>"

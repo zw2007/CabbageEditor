@@ -1,12 +1,10 @@
 from PySide6.QtCore import QRect, Signal, Qt
 from PySide6.QtWidgets import QWidget
 
-from Backend.engine_core.engine_import import load_corona_engine
-from Backend.engine_core.scene import Scene
-from Backend.engine_core.camera import Camera
-from Backend.engine_core.scene_manager import SceneManager  # 新增导入
-
-CoronaEngine = load_corona_engine()
+from ..engine_core.scene import Scene
+from ..engine_core.camera import Camera
+from ..engine_core.viewport import Viewport
+from ..engine_core.scene_manager import SceneManager
 
 class RenderWidget(QWidget):
     geometry_changed = Signal(QRect)
@@ -21,22 +19,34 @@ class RenderWidget(QWidget):
 
         # 使用 SceneManager 创建/获取场景
         self.scene_manager = SceneManager()  # 单例获取
-        self.scene = self.scene_manager.create_scene("MainScene", light_field=False)
+        self.scene = self.scene_manager.create_scene("MainScene")
 
-        # 创建相机并加入场景
+        # 创建相机并加入场景（OOP API）
         try:
             self.camera = Camera(
-                position=[10.0, 10.0, 0.0],
-                forward=[-1.0, -1.0, -1.0],
+                position=[5.0, 5.0, 0.0],
+                forward=[-1.0, -1.0, 0.0],
                 world_up=[0.0, 1.0, 0.0],
                 fov=45.0,
                 name="MainCamera"
             )
-            self.camera.set_surface(int(self.winId()))
-            self.scene.add_camera(self.camera)
+
+            # 设置渲染表面（在 Camera 上）
+            try:
+                self.camera.set_surface(int(self.winId()))
+            except Exception as surf_err:
+                print(f"[RenderWidget] Warning: Camera.set_surface failed: {surf_err}")
+
+            # OOP: 通过 Viewport 绑定 Camera
+            self.viewport = Viewport(self.width(), self.height())
+            self.viewport.set_camera(self.camera)
+
+            # 通过 Scene 包装器添加视口
+            self.scene.add_viewport(self.viewport)
         except Exception as e:
-            print(f"[RenderWidget] Failed to create or setup camera: {e}")
+            print(f"[RenderWidget] Failed to create or setup camera/viewport: {e}")
             self.camera = None
+            self.viewport = None
 
     def get_scene(self) -> Scene:
         """返回当前渲染使用的场景对象"""
