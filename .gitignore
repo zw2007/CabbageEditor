@@ -16,6 +16,7 @@ coverage.xml
 htmlcov/
 */package-lock.json
 *.toml
+!Backend/artificial_intelligence/config/app_config.example.toml
 
 # ------------------------------
 # Virtual environments
@@ -63,6 +64,7 @@ Backend/__pycache__/
 # ------------------------------
 # Local secrets / backups
 # ------------------------------
-Backend/config/mcp_client_secrets.json
+Backend/artificial_intelligence/config/app_config.toml
 Backend_backup/
 Backend_legacy/
+autosave/

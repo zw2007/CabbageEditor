@@ -4,6 +4,8 @@ import json
 import os
 from typing import Any, Dict, List
 
+import os
+
 from Backend.engine_core.actor import Actor
 from Backend.engine_core.scene_manager import SceneManager
 from Backend.utils.logging import get_logger
@@ -56,7 +58,7 @@ class SceneApplicationService:
 
     def remove_actor(self, scene_name: str, actor_name: str) -> Dict:
         scene = self._get_scene(scene_name)
-        actor = scene.get_actor(actor_name)
+        actor = self._find_actor(scene, actor_name)
         if actor is None:
             raise ValueError(f"Actor '{actor_name}' not found")
         scene.remove_actor(actor)
@@ -65,15 +67,15 @@ class SceneApplicationService:
 
     def apply_transform(self, scene_name: str, actor_name: str, operation: str, vector: List[float]) -> Dict:
         scene = self._get_scene(scene_name)
-        actor = scene.get_actor(actor_name)
+        actor = self._find_actor(scene, actor_name)
         if actor is None:
             raise ValueError(f"Actor '{actor_name}' not found")
         if operation == "Scale":
-            actor.scale(vector)
+            actor.set_scale(vector)
         elif operation == "Move":
-            actor.move(vector)
+            actor.set_position(vector)
         elif operation == "Rotate":
-            actor.rotate(vector)
+            actor.set_rotation(vector)
         else:
             raise ValueError(f"Unsupported operation '{operation}'")
         logger.debug("Applied %s%s to %s", operation, vector, actor_name)
@@ -89,6 +91,24 @@ class SceneApplicationService:
         scene = self._get_scene(scene_name)
         scene.set_sun_direction(direction)
         logger.debug("Sun direction set for %s", scene_name)
+
+    def _find_actor(self, scene, actor_name: str | None):
+        if not actor_name:
+            return None
+        actor = scene.get_actor(actor_name)
+        if actor:
+            return actor
+        normalized = self._normalize_actor_name(actor_name)
+        for candidate in scene.get_actors():
+            if self._normalize_actor_name(candidate.name) == normalized:
+                return candidate
+        return None
+
+    @staticmethod
+    def _normalize_actor_name(name: str) -> str:
+        value = name.strip().strip('"').strip("'")
+        base = os.path.splitext(value.lower())[0]
+        return base
 
     def export_scene(self, scene_name: str) -> str:
         scene = self._get_scene(scene_name)

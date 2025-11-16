@@ -1,0 +1,47 @@
+# 运行前请将本文件复制为 app_config.toml，并替换 API Key。
+
+[[providers]]
+name = "siliconflow"
+type = "openai-compatible"
+base_url = "https://api.siliconflow.cn/v1"
+api_key = "sk-your-siliconflow-key"
+
+[[providers]]
+name = "closeai"
+type = "openai-compatible"
+base_url = "https://api.closeai.com/v1"
+api_key = "sk-your-closeai-key"
+
+[[providers]]
+name = "lingya"
+type = "openai-compatible"
+base_url = "https://api.lingyaai.cn/v1"
+api_key = "sk-your-lingya-key"
+
+[runtime]
+enable_gpu = false
+log_level = "INFO"
+
+[llm.chat]
+provider = "siliconflow"
+model = "Qwen/Qwen3-Next-80B-A3B-Instruct"
+temperature = 0.2
+request_timeout = 60
+system_prompt = """
+你是 CabbageEditor 的内置助手。请在回答前检查可用工具，必要时调用 MCP、图像或视频工具；其余情况直接用中文简洁回答。
+"""
+
+[llm.tool_models.mcp]
+provider = "siliconflow"
+model = "Qwen/Qwen3-Next-80B-A3B-Instruct"
+
+[media.image]
+enable = true
+provider = "lingya"
+model = "nano-banana"
+base_url = "https://api.lingyaai.cn/v1/images/generations"
+
+[media.video]
+enable = false
+provider = "closeai"
+model = "sora"

@@ -13,9 +13,9 @@ class SceneManager:
             cls._instance.scenes = {}
         return cls._instance
 
-    def create_scene(self, scene_name: str, light_field: bool = False) -> Scene:
+    def create_scene(self, scene_name: str) -> Scene:
         if scene_name not in self.scenes:
-            scene = Scene(name=scene_name, light_field=light_field)
+            scene = Scene(name=scene_name)
             self.scenes[scene_name] = scene
             print(f"all scenes:{self.scenes}")
         print(f"all scenes:{self.scenes}")

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .engine_import import load_corona_engine
 
@@ -7,128 +7,74 @@ CoronaEngine = load_corona_engine()
 
 class Camera:
     """
-    Camera 包装类，代表场景中的相机
-
-    使用方式：
-        camera = Camera()
-        camera.set_position([0, 5, 10])
-        scene.add_camera(camera)
+    OOP 相机包装：统一通过 set(...) 推送到引擎；包装层提供单项 setter 并维护本地缓存。
     """
 
-    def __init__(self, position=None, forward=None, world_up=None, fov=None, name: str = "Camera"):
-        """
-        创建 Camera 对象
-
-        Args:
-            position: 相机位置 [x, y, z]，可选
-            forward: 朝向向量 [x, y, z]，可选
-            world_up: 世界向上向量 [x, y, z]，可选
-            fov: 视场角（弧度），可选
-            name: 相机名称
-        """
+    def __init__(self, position: Optional[List[float]] = None, forward: Optional[List[float]] = None,
+                 world_up: Optional[List[float]] = None, fov: Optional[float] = None, name: str = "Camera"):
         if CoronaEngine is None:
             raise RuntimeError("CoronaEngine 未初始化")
 
-        # 调用 C++ API: CoronaEngine.Camera() 或 CoronaEngine.Camera(position, forward, world_up, fov)
         CameraCtor = getattr(CoronaEngine, 'Camera', None)
         if CameraCtor is None:
             raise RuntimeError("CoronaEngine 未提供 Camera 构造器")
 
         if position is not None and forward is not None and world_up is not None and fov is not None:
-            # 使用完整参数构造
             self.engine_obj = CameraCtor(position, forward, world_up, fov)
+            self._pos = list(position)
+            self._fwd = list(forward)
+            self._up = list(world_up)
+            self._fov = float(fov)
         else:
-            # 使用默认构造
             self.engine_obj = CameraCtor()
+            self._pos = self.engine_obj.get_position()
+            self._fwd = self.engine_obj.get_forward()
+            self._up = self.engine_obj.get_world_up()
+            self._fov = self.engine_obj.get_fov()
 
         self.name = name
 
+    # 单项 setter：更新缓存并统一调用 set
+    def _flush(self):
+        self.engine_obj.set(self._pos, self._fwd, self._up, self._fov)
+
     def set_position(self, position: List[float]):
-        """设置相机位置"""
-        try:
-            self.engine_obj.set_position(position)
-        except Exception as e:
-            raise RuntimeError(f"Camera.set_position 失败: {e}") from e
+        self._pos = list(position)
+        self._flush()
 
     def get_position(self) -> List[float]:
-        """获取相机位置"""
-        try:
-            return self.engine_obj.get_position()
-        except Exception as e:
-            raise RuntimeError(f"Camera.get_position 失败: {e}") from e
+        return self.engine_obj.get_position()
 
     def set_forward(self, forward: List[float]):
-        """设置相机朝向"""
-        try:
-            self.engine_obj.set_forward(forward)
-        except Exception as e:
-            raise RuntimeError(f"Camera.set_forward 失败: {e}") from e
+        self._fwd = list(forward)
+        self._flush()
 
     def get_forward(self) -> List[float]:
-        """获取相机朝向"""
-        try:
-            return self.engine_obj.get_forward()
-        except Exception as e:
-            raise RuntimeError(f"Camera.get_forward 失败: {e}") from e
+        return self.engine_obj.get_forward()
 
     def set_world_up(self, world_up: List[float]):
-        """设置世界向上向量"""
-        try:
-            self.engine_obj.set_world_up(world_up)
-        except Exception as e:
-            raise RuntimeError(f"Camera.set_world_up 失败: {e}") from e
+        self._up = list(world_up)
+        self._flush()
 
     def get_world_up(self) -> List[float]:
-        """获取世界向上向量"""
-        try:
-            return self.engine_obj.get_world_up()
-        except Exception as e:
-            raise RuntimeError(f"Camera.get_world_up 失败: {e}") from e
+        return self.engine_obj.get_world_up()
 
     def set_fov(self, fov: float):
-        """设置视场角"""
-        try:
-            self.engine_obj.set_fov(fov)
-        except Exception as e:
-            raise RuntimeError(f"Camera.set_fov 失败: {e}") from e
+        self._fov = float(fov)
+        self._flush()
 
     def get_fov(self) -> float:
-        """获取视场角"""
-        try:
-            return self.engine_obj.get_fov()
-        except Exception as e:
-            raise RuntimeError(f"Camera.get_fov 失败: {e}") from e
+        return self.engine_obj.get_fov()
 
-    def move(self, delta: List[float]):
-        """相对移动相机"""
-        try:
-            self.engine_obj.move(delta)
-        except Exception as e:
-            raise RuntimeError(f"Camera.move 失败: {e}") from e
-
-    def rotate(self, euler: List[float]):
-        """旋转相机"""
-        try:
-            self.engine_obj.rotate(euler)
-        except Exception as e:
-            raise RuntimeError(f"Camera.rotate 失败: {e}") from e
-
-    def look_at(self, position: List[float], forward: List[float]):
-        """设置相机看向指定方向"""
-        try:
-            self.engine_obj.look_at(position, forward)
-        except Exception as e:
-            raise RuntimeError(f"Camera.look_at 失败: {e}") from e
+    # 新接口直通
+    def set(self, position: List[float], forward: List[float], world_up: List[float], fov: float):
+        self._pos, self._fwd, self._up, self._fov = list(position), list(forward), list(world_up), float(fov)
+        self.engine_obj.set(self._pos, self._fwd, self._up, self._fov)
 
     def set_surface(self, surface: int):
-        """设置渲染表面"""
-        try:
-            self.engine_obj.set_surface(surface)
-        except Exception as e:
-            raise RuntimeError(f"Camera.set_surface 失败: {e}") from e
+        self.engine_obj.set_surface(surface)
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典表示"""
         return {
             'name': self.name,
             'engine_obj': self.engine_obj,
@@ -136,4 +82,3 @@ class Camera:
 
     def __repr__(self):
         return f"Camera(name={self.name})"
-

@@ -10,17 +10,17 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
 from Backend.utils.bootstrap import bootstrap
-from Backend.config.settings import get_settings
+from Backend.artificial_intelligence.config.config import get_app_config
 
-settings = get_settings()
-if not settings.enable_gpu:
+app_config = get_app_config()
+if not app_config.runtime.enable_gpu:
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-gpu-compositing --enable-logging=stderr"
     os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
     os.environ["QT_QUICK_BACKEND"] = "software"
     os.environ['QT_OPENGL'] = 'software'
     os.environ["QT_DISABLE_DIRECT_COMPOSITION"] = "1"
 
-sys.path.append(str(settings.paths.repo_root))
+sys.path.append(str(app_config.paths.repo_root))
 
 bootstrap()
 
