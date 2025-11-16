@@ -67,3 +67,4 @@ Backend/__pycache__/
 Backend/artificial_intelligence/config/app_config.toml
 Backend_backup/
 Backend_legacy/
+autosave/

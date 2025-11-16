@@ -12,13 +12,19 @@ type = "openai-compatible"
 base_url = "https://api.closeai.com/v1"
 api_key = "sk-your-closeai-key"
 
+[[providers]]
+name = "lingya"
+type = "openai-compatible"
+base_url = "https://api.lingyaai.cn/v1"
+api_key = "sk-your-lingya-key"
+
 [runtime]
 enable_gpu = false
 log_level = "INFO"
 
 [llm.chat]
 provider = "siliconflow"
-model = "Qwen/Qwen3-Omni-30B-A3B-Instruct"
+model = "Qwen/Qwen3-Next-80B-A3B-Instruct"
 temperature = 0.2
 request_timeout = 60
 system_prompt = """
@@ -27,12 +33,13 @@ system_prompt = """
 
 [llm.tool_models.mcp]
 provider = "siliconflow"
-model = "Qwen/Qwen3-14B"
+model = "Qwen/Qwen3-Next-80B-A3B-Instruct"
 
 [media.image]
 enable = true
-provider = "closeai"
-model = "gpt-image-1"
+provider = "lingya"
+model = "nano-banana"
+base_url = "https://api.lingyaai.cn/v1/images/generations"
 
 [media.video]
 enable = false

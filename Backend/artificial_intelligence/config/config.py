@@ -50,6 +50,7 @@ class MediaToolConfig:
     enable: bool = False
     provider: str | None = None
     model: str | None = None
+    base_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,7 @@ class PathsConfig:
     backend_root: Path
     frontend_dist: Path
     script_dir: Path
+    autosave_dir: Path
 
 
 @dataclass(frozen=True)
@@ -210,6 +212,7 @@ def _load_media_config(raw: Mapping[str, Any]) -> MediaConfig:
             enable=_as_bool(section.get("enable"), False),
             provider=section.get("provider"),
             model=section.get("model"),
+            base_url=section.get("base_url"),
         )
 
     image = _load_media_tool(raw.get("image"))
@@ -227,11 +230,14 @@ def _build_app_config() -> AppConfig:
 
     repo_root = Path(__file__).resolve().parents[3]
     backend_root = repo_root / "Backend"
+    autosave_dir = repo_root / "autosave"
+    autosave_dir.mkdir(parents=True, exist_ok=True)
     paths = PathsConfig(
         repo_root=repo_root,
         backend_root=backend_root,
         frontend_dist=repo_root / "Frontend" / "dist" / "index.html",
         script_dir=backend_root / "script",
+        autosave_dir=autosave_dir,
     )
 
     providers = _load_providers(raw.get("providers"))

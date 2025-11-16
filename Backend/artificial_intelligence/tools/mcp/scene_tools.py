@@ -32,7 +32,13 @@ class TransformModelInput(BaseModel):
 
 
 def _build_scene_query_tool(scene_service: "SceneApplicationService") -> StructuredTool:
-    def _query_scene(data: SceneQueryInput) -> str:
+    def _query_scene(
+        *,
+        scene_name: str = "MainScene",
+        query: Literal["list_models", "get_model_by_name"],
+        name: str | None = None,
+    ) -> str:
+        data = SceneQueryInput(scene_name=scene_name, query=query, name=name)
         scene = scene_service.scene_manager.get_scene(data.scene_name)
         if scene is None:
             return json.dumps({"scene": data.scene_name, "actors": []}, ensure_ascii=False)
@@ -64,7 +70,21 @@ def _build_scene_query_tool(scene_service: "SceneApplicationService") -> Structu
 
 
 def _build_transform_tool(scene_service: "SceneApplicationService") -> StructuredTool:
-    def _transform_model(data: TransformModelInput) -> str:
+    def _transform_model(
+        *,
+        scene_name: str = "MainScene",
+        model_name: str,
+        operation: Literal["scale", "move", "rotate"] = "scale",
+        scale_factor: float | None = None,
+        vector: Tuple[float, float, float] | None = None,
+    ) -> str:
+        data = TransformModelInput(
+            scene_name=scene_name,
+            model_name=model_name,
+            operation=operation,
+            scale_factor=scale_factor,
+            vector=vector,
+        )
         op = data.operation.lower()
         if op == "scale":
             if data.scale_factor is not None:

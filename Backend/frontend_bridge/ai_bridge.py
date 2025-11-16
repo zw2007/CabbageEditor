@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PySide6.QtCore import QObject, Signal, Slot, QTimer
 
 from Backend.utils.bootstrap import bootstrap
-from Backend.artificial_intelligence.api import handle_user_message
+from Backend.artificial_intelligence.service import handle_user_message, handle_image_upload
 from Backend.artificial_intelligence.config.config import get_app_config
 from Backend.artificial_intelligence.models import get_chat_model
 from Backend.utils.logging import get_logger
@@ -86,10 +86,10 @@ class AIService(QObject):
         """协程：处理 AI 消息"""
         try:
             msg_data = json.loads(ai_message)
-            query = msg_data.get("message", "")
+            payload = msg_data if isinstance(msg_data, dict) else {"message": msg_data}
 
             # 在线程池中执行阻塞的 AI 调用
-            result = await self._loop.run_in_executor(self._executor, handle_user_message, query)
+            result = await self._loop.run_in_executor(self._executor, handle_user_message, payload)
 
             # 发送响应信号
             self.ai_response.emit(result)
@@ -100,6 +100,32 @@ class AIService(QObject):
                     "type": "error",
                     "content": _format_exception(exc),
                     "status": "error",
+                    "timestamp": int(time.time()),
+                }
+            )
+            self.ai_response.emit(error_payload)
+
+    @Slot(str)
+    def upload_image(self, payload: str) -> None:
+        task = self._loop.create_task(self._process_image_upload(payload))
+        self._active_tasks.add(task)
+        task.add_done_callback(self._active_tasks.discard)
+
+    async def _process_image_upload(self, payload: str) -> None:
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError:
+            data = {}
+        try:
+            result = await self._loop.run_in_executor(self._executor, handle_image_upload, data)
+            self.ai_response.emit(result)
+        except BaseException as exc:
+            error_payload = json.dumps(
+                {
+                    "type": "image_upload",
+                    "status": "error",
+                    "token": data.get("token"),
+                    "content": _format_exception(exc),
                     "timestamp": int(time.time()),
                 }
             )

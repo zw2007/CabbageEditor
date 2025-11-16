@@ -68,7 +68,7 @@
 | `SceneService` | 将 Qt Signal/Slot 绑定到 `SceneApplicationService`；`actor_operation` 结果通过 `scene_loaded` (type=actor_operation) 推送；`camera_move`/`sun_direction` 仅在失败时发出 `scene_error`。 |
 | `ProjectService` | 文件对话框 + 场景服务；导入模型成功后调用 `sceneService.actor_created`，与旧行为一致。 |
 | `ScriptingService` | Blockly 脚本写入 Backend/script/ + 生成 runScript.py。 |
-| `AIService` | WorkerThread 包装 `Backend.artificial_intelligence.api.handle_user_message`，在后台线程执行 LangChain Agent 调用并格式化 JSON 响应。 |
+| `AIService` | WorkerThread 包装 `Backend.artificial_intelligence.service.handle_user_message`，在后台线程执行 LangChain Agent 调用并格式化 JSON 响应。 |
 
 WebChannel 注册流程详见 `Backend/frontend_bridge/webchannel.py`：
 - 所有服务在 BrowserWidget 初始化时注册；
@@ -102,7 +102,7 @@ WebChannel 注册流程详见 `Backend/frontend_bridge/webchannel.py`：
 
 ### 5.3 AI 对话
 1. `aiService.send_message_to_ai` 收到 JSON `{message}`
-2. WorkerThread 调用 `Backend.artificial_intelligence.api.handle_user_message`，内部会：
+2. WorkerThread 调用 `Backend.artificial_intelligence.service.handle_user_message`，内部会：
    - 将消息追加到内存中的会话历史；
    - 调用 LangChain Agent：`create_agent(...).invoke({"messages": history})`；
    - 自动挂载 MCP / media / builtin 工具。
