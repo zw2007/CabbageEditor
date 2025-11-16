@@ -37,7 +37,7 @@
               <!-- 多张图片显示 -->
               <div v-if="message.images && message.images.length > 0" class="flex flex-wrap gap-2">
                 <div v-for="(img, imgIdx) in message.images" :key="imgIdx" class="max-w-xs">
-                  <img :src="img.data" :alt="img.name" class="rounded border cursor-pointer max-h-40 object-contain" @click="openImagePreview({imageData: img.data, imageName: img.name})"/>
+                  <img :src="img.preview" :alt="img.name" class="rounded border cursor-pointer max-h-40 object-contain" @click="openImagePreview({imageData: img.preview, imageName: img.name})"/>
                   <div class="text-xs text-gray-500 mt-1 truncate">{{ img.name }}</div>
                 </div>
               </div>
@@ -60,9 +60,6 @@
               </button>
               <button @click="triggerImageSelect('scene')" class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 whitespace-nowrap">
                 导入场景
-              </button>
-              <button @click="triggerImageSelect('style')" class="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 whitespace-nowrap">
-                导入样式
               </button>
 
               <div class="relative" @keydown.escape="hidePrompts">
@@ -95,9 +92,9 @@
                   <button @click="clearAllImages" class="text-xs text-red-500 hover:text-red-700">清空全部</button>
                 </div>
                 <div class="flex flex-wrap gap-4">
-                  <div v-for="type in ['product', 'scene', 'style']" :key="type">
+                  <div v-for="type in imageTypes" :key="type">
                     <div v-if="pendingImages[type]" class="relative group">
-                      <img :src="pendingImages[type].data" :alt="pendingImages[type].name" class="h-20 w-20 object-cover rounded border border-blue-300" />
+                      <img :src="pendingImages[type].preview" :alt="pendingImages[type].name" class="h-20 w-20 object-cover rounded border border-blue-300" />
                       <button @click="removeImage(type)" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                       <div class="text-xs text-gray-600 mt-1 w-20 truncate capitalize" :title="pendingImages[type].name">{{ imageTypeLabels[type] }}</div>
                     </div>
@@ -145,27 +142,29 @@ const messages = ref([
 ]);
 const userInput = ref('');
 const chatHistoryRef = ref(null);
+const sessionId = ref(null);
 
 // 图片相关
 const imageInputRef = ref(null);
 const imageError = ref('');
 const imagePreview = ref(null); // {imageData, imageName}
-const currentImageType = ref(null); // 'product', 'scene', 'style'
+const imageTypes = ['product', 'scene'];
+const currentImageType = ref(null); // 'product' | 'scene'
 const pendingImages = ref({
   product: null,
   scene: null,
-  style: null,
 });
 
 const imageTypeLabels = {
   product: '产品',
   scene: '场景',
-  style: '样式',
 };
 
 const hasPendingImages = computed(() => {
   return Object.values(pendingImages.value).some(img => img !== null);
 });
+
+const uploadResolvers = new Map();
 
 // 提示词相关
 const showPrompts = ref(false);
@@ -183,6 +182,37 @@ function hidePrompts() { showPrompts.value = false; }
 function applyPrompt(p) {
   userInput.value = p.text;
   hidePrompts();
+}
+
+function createToken() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function uploadImageToBackend({type, name, data}) {
+  const token = createToken();
+  const payload = {
+    token,
+    type,
+    name,
+    data,
+    session_id: sessionId.value,
+  };
+  const promise = new Promise((resolve, reject) => {
+    uploadResolvers.set(token, {resolve, reject});
+  });
+  await waitWebChannel();
+  if (window.aiService && typeof window.aiService.upload_image === 'function') {
+    window.aiService.upload_image(JSON.stringify(payload));
+  } else if (window.pyBridge && typeof window.pyBridge.upload_image === 'function') {
+    window.pyBridge.upload_image(JSON.stringify(payload));
+  } else {
+    uploadResolvers.delete(token);
+    throw new Error("未发现图片上传通道 (aiService/pyBridge)");
+  }
+  return promise;
 }
 
 function triggerImageSelect(type) {
@@ -204,7 +234,6 @@ function removeImage(type) {
 function clearAllImages() {
   pendingImages.value.product = null;
   pendingImages.value.scene = null;
-  pendingImages.value.style = null;
 }
 
 async function fileToBase64(file) {
@@ -235,14 +264,33 @@ async function onImageChange(e) {
 
   try {
     const base64 = await fileToBase64(file);
-    pendingImages.value[currentImageType.value] = {
+    const type = currentImageType.value;
+    pendingImages.value[type] = {
       name: file.name,
-      data: base64,
-      type: currentImageType.value,
+      preview: base64,
+      type,
+      url: null,
+      uploading: true,
     };
+    const result = await uploadImageToBackend({type, name: file.name, data: base64});
+    const url = result?.image?.url;
+    if (!url) {
+      throw new Error(result?.content || '上传失败');
+    }
+    pendingImages.value[type] = {
+      name: file.name,
+      preview: base64,
+      type,
+      url,
+      uploading: false,
+    };
+    imageError.value = '';
   } catch (err) {
     console.error('读取图片失败', err);
-    imageError.value = '读取图片失败，请重试。';
+    imageError.value = err?.message || '上传图片失败，请重试。';
+    if (currentImageType.value) {
+      pendingImages.value[currentImageType.value] = null;
+    }
   } finally {
     e.target.value = '';
     currentImageType.value = null; // 重置
@@ -262,7 +310,7 @@ async function waitWebChannel() {
 
 const SendMessageToAI = async (query, extra = {}) => {
   await waitWebChannel();
-  const payloadObj = {message: query, ...extra};
+  const payloadObj = {message: query, session_id: sessionId.value, ...extra};
   const payload = JSON.stringify(payloadObj);
   if (window.aiService && typeof window.aiService.send_message_to_ai === 'function') {
     window.aiService.send_message_to_ai(payload);
@@ -273,36 +321,39 @@ const SendMessageToAI = async (query, extra = {}) => {
 
 const sendMessage = () => {
   const text = userInput.value.trim();
-  const imagesToSend = Object.values(pendingImages.value).filter(img => img !== null);
+  const imagesToSend = imageTypes
+    .map(type => pendingImages.value[type])
+    .filter(img => img !== null);
 
   // 至少要有文字或图片之一
   if (!text && imagesToSend.length === 0) return;
 
-  // 构建消息对象
+  const pendingUrl = imagesToSend.find(img => !img.url);
+  if (pendingUrl) {
+    imageError.value = `请等待 ${imageTypeLabels[pendingUrl.type]} 图片上传完成`;
+    return;
+  }
+
   const messageObj = {sender: "User"};
   let displayText = text || '';
 
   if (imagesToSend.length > 0) {
-    // 如果有多个图片，显示图片列表
     const imageList = imagesToSend.map(img => img.name).join(', ');
     displayText = displayText
       ? `${displayText}\n[${imagesToSend.length}张图片: ${imageList}]`
       : `[${imagesToSend.length}张图片: ${imageList}]`;
 
-    // 如果只有一张图片，直接显示在消息中
     if (imagesToSend.length === 1) {
-      messageObj.imageData = imagesToSend[0].data;
+      messageObj.imageData = imagesToSend[0].preview;
       messageObj.imageName = imagesToSend[0].name;
     } else {
-      // 多张图片暂存为数组
-      messageObj.images = imagesToSend.map(img => ({data: img.data, name: img.name}));
+      messageObj.images = imagesToSend.map(img => ({data: img.preview, name: img.name}));
     }
   }
 
   messageObj.text = displayText;
   messages.value.push(messageObj);
 
-  // 滚动到底部
   nextTick(() => {
     const chatHistory = chatHistoryRef.value;
     if (chatHistory) {
@@ -310,19 +361,16 @@ const sendMessage = () => {
     }
   });
 
-  // 发送到后端
-  const extra = {};
+  const extra = {session_id: sessionId.value};
   if (imagesToSend.length > 0) {
-    extra.type = 'images';
     extra.images = imagesToSend.map(img => ({
       name: img.name,
-      data: img.data,
-      type: img.type, // 附带图片类型
+      url: img.url,
+      type: img.type,
     }));
   }
   SendMessageToAI(text || '[图片]', extra);
 
-  // 清空输入
   userInput.value = '';
   clearAllImages();
   imageError.value = '';
@@ -337,6 +385,23 @@ window.receiveAIMessage = (data) => {
       } catch {
         message = {content: data};
       }
+    }
+
+    if (message.session_id) {
+      sessionId.value = message.session_id;
+    }
+
+    if (message.type === 'image_upload') {
+      const handler = message.token ? uploadResolvers.get(message.token) : null;
+      if (handler) {
+        uploadResolvers.delete(message.token);
+        if (message.status === 'success') {
+          handler.resolve(message);
+        } else {
+          handler.reject(new Error(message.content || '上传失败'));
+        }
+      }
+      return;
     }
 
     if (message.type === 'error') {
@@ -447,6 +512,7 @@ onUnmounted(() => {
     }
   }
   document.removeEventListener('click', handleGlobalClick, true);
+  uploadResolvers.clear();
 });
 </script>
 

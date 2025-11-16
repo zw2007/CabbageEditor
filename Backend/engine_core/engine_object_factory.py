@@ -1,14 +1,17 @@
 from typing import Any, TypeVar, Callable, Dict
 import os
 import weakref
+import logging
 
 from .engine_import import load_corona_engine
 
+logger = logging.getLogger(__name__)
+
 CoronaEngine = load_corona_engine()
 if CoronaEngine is None:
-    print("[EngineObjectFactory] 未找到 CoronaEngine (需要 -DBUILD_CORONA_EDITOR=ON)")
+    logger.warning("未找到 CoronaEngine (需要 -DBUILD_CORONA_EDITOR=ON)")
 else:
-    print("[EngineObjectFactory] 使用 CoronaEngine / CoronaEngineFallback")
+    logger.info("使用 CoronaEngine / CoronaEngineFallback")
 
 from .actor import Actor
 from .camera import Camera

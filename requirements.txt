@@ -16,6 +16,14 @@ opencv-python
 # Cryptographic library
 cryptography
 
+# HTTP client
+httpx
+
+# LangChain v1.0
+langchain
+langchain-openai
+langchain-mcp-adapters
+langsmith
 
 
 

@@ -3,7 +3,7 @@ import os
 import json
 import logging
 from PySide6.QtCore import QObject, Signal, Slot
-from Backend.config.settings import get_settings
+from Backend.artificial_intelligence.config.config import get_app_config
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +13,8 @@ class ScriptingService(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        settings = get_settings()
-        self.script_dir = str(settings.paths.script_dir)
+        config = get_app_config()
+        self.script_dir = str(config.paths.script_dir)
         os.makedirs(self.script_dir, exist_ok=True)
 
     @Slot(str, int)

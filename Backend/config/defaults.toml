@@ -1,6 +1,0 @@
-log_level = "INFO"
-enable_gpu = "false"
-llm_provider = "qwen"
-llm_default_model = "Qwen/Qwen2.5-7B-Instruct"
-llm_tool_model = "Qwen/Qwen3-14B"
-llm_require_search = "true"
