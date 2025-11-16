@@ -71,11 +71,11 @@ class SceneApplicationService:
         if actor is None:
             raise ValueError(f"Actor '{actor_name}' not found")
         if operation == "Scale":
-            actor.scale(vector)
+            actor.set_scale(vector)
         elif operation == "Move":
-            actor.move(vector)
+            actor.set_position(vector)
         elif operation == "Rotate":
-            actor.rotate(vector)
+            actor.set_rotation(vector)
         else:
             raise ValueError(f"Unsupported operation '{operation}'")
         logger.debug("Applied %s%s to %s", operation, vector, actor_name)
