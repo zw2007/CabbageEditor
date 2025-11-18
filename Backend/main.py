@@ -22,6 +22,8 @@ if not app_config.runtime.enable_gpu:
 
 sys.path.append(str(app_config.paths.repo_root))
 
+
+
 bootstrap()
 
 from Backend.window_layout import main_window  # noqa: E402
